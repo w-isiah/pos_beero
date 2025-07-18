@@ -1,0 +1,168 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Edit Customer{% endblock %}
+
+<!-- Element injected into the BODY element -->
+{% block body_class %}sidebar-mini layout-footer-fixed{% endblock body_class %}
+
+<!-- Specific Page CSS -->
+{% block stylesheets %}
+<!-- Google Font: Source Sans Pro -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+<!-- Theme style -->
+<link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="content-wrapper">
+  <!-- Content Header (Page header) -->
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>Edit Customer</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="/index">Home</a></li>
+            <li class="breadcrumb-item"><a href="/customers">Customers</a></li>
+            <li class="breadcrumb-item active">Edit Customer</li>
+          </ol>
+        </div>
+      </div>
+    </div><!-- /.container-fluid -->
+  </section>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="alert-container">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        <strong>{{ message }}</strong>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Main content -->
+  <section class="content">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-12">
+          <!-- Default box -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Edit Customer Information</h3>
+            </div>
+            <div class="card-body">
+
+              <div class="widget-content nopadding">
+                <!-- Edit Customer Form -->
+                <form action="{{ url_for('authentication_blueprint.edit_user_profile', id=user.id) }}" method="POST" enctype="multipart/form-data">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+                  <div class="row">
+                    <div class="col-md-6 form-group">
+                      <label for="username">Username</label>
+                      <input type="text" class="form-control form-control-lg" id="username" value="{{ user.username }}" name="username" required>
+                    </div>
+
+                    <div class="col-md-6 form-group">
+                      <label for="first_name">First Name</label>
+                      <input type="text" class="form-control form-control-lg" id="first_name" value="{{ user.first_name }}" name="first_name" required>
+                    </div>
+
+                    <div class="col-md-6 form-group">
+                      <label for="last_name">Last Name</label>
+                      <input type="text" class="form-control form-control-lg" id="last_name" value="{{ user.last_name }}" name="last_name" required>
+                    </div>
+
+                    <div class="col-md-6 form-group">
+                      <label for="other_name">Other Name</label>
+                      <input type="text" class="form-control form-control-lg" id="other_name" value="{{ user.other_name }}" name="other_name">
+                    </div>
+
+                    <div class="col-md-6 form-group">
+                      <label for="password">Password (Leave blank to keep current)</label>
+                      <input type="password" class="form-control form-control-lg" id="password" name="password" placeholder="Enter a new password">
+                    </div>
+
+                    <!-- Show password toggle -->
+                    <div class="col-md-6 form-group">
+                      <input type="checkbox" id="show_password"> Show Password
+                    </div>
+
+                    <!-- Role is displayed but not editable -->
+                    <div class="col-md-6 form-group">
+                      <label for="role">Role</label>
+                      <select class="form-control form-control-lg select2" disabled name="role" id="role" style="width: 100%;" required>
+                        <option value="School Practice Supervisor" {% if user.role == 'School Practice Supervisor' %}selected{% endif %}>School Practice Supervisor</option>
+                        <option value="Head of Department" {% if user.role == 'Head of Department' %}selected{% endif %}>Head of Department</option>
+                      </select>
+                    </div>
+
+                    <div class="col-md-6 form-group">
+                      <label for="profile_image">Profile Image</label>
+                      <input type="file" class="form-control-file" id="profile_image" name="profile_image" accept="image/*">
+                      <small class="form-text">Upload a profile image (optional).</small>
+                      {% if user.profile_image %}
+                      <img src="/static/uploads/{{user.profile_image}}" alt="Profile Image" class="img-thumbnail mt-2" width="150">
+                      {% else %}
+                      <p>No profile image available</p>
+                      {% endif %}
+                    </div>
+
+                    <div class="col-md-12 text-center mt-4">
+                      <button type="submit" class="btn btn-primary btn-sm px-4">Save Changes</button>
+                    </div>
+                  </div>
+                </form>
+
+              </div>
+
+            </div>
+            <!-- /.card-body -->
+            <div class="card-footer">
+              Footer
+            </div>
+            <!-- /.card-footer-->
+          </div>
+          <!-- /.card -->
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- /.content -->
+</div>
+{% endblock content %}
+
+<!-- Specific Page JS -->
+{% block javascripts %}
+<!-- jQuery -->
+<script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+<!-- Bootstrap 4 -->
+<script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE App -->
+<script src="/static/assets/js/adminlte.min.js"></script>
+<!-- AdminLTE for demo purposes -->
+<script src="/static/assets/js/demo.js"></script>
+
+<script>
+  // Show Password toggle functionality
+  document.getElementById('show_password').addEventListener('change', function() {
+    var passwordField = document.getElementById('password');
+    if (this.checked) {
+      passwordField.type = 'text';  // Show password
+    } else {
+      passwordField.type = 'password';  // Hide password
+    }
+  });
+</script>
+{% endblock javascripts %}

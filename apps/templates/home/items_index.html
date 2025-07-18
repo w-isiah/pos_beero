@@ -1,0 +1,167 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Dashboard {% endblock %}
+
+{% block body_class %} sidebar-mini {% endblock %}
+
+{% block stylesheets %}
+<!-- Google Font -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+<!-- Ionicons -->
+<link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+<!-- AdminLTE -->
+<link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+<!-- Custom -->
+<link rel="stylesheet" href="/static/assets/css/mine.css">
+
+<style>
+  .alert-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 80%;
+    display: none;
+  }
+
+  .alert {
+    transition: opacity 1s ease-out;
+    margin-bottom: 10px;
+  }
+
+  .notification {
+    background-color: #fefefe;
+    border: 1px solid #ccc;
+    padding: 10px 15px;
+    border-radius: 4px;
+    display: none;
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+  }
+
+  .notification .close-btn {
+    float: right;
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    color: #888;
+    cursor: pointer;
+  }
+</style>
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="content-wrapper">
+  <div class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1 class="m-0 text-dark">Dashboard</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="/index">Home</a></li>
+            <li class="breadcrumb-item active">Dashboard</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="alert-container" id="flashMessageContainer">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        <strong>{{ message }}</strong>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <div id="notification" class="notification">
+    <span id="notification-message"></span>
+    <button id="close-notification" class="close-btn">&times;</button>
+  </div>
+
+  <section class="content">
+    <div class="container-fluid">
+      <!-- Dashboard Boxes -->
+      <div class="row">
+        <!-- Add Item -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-primary">
+            <div class="inner">
+              <h5>Add Item</h5>
+              <p>to Stock</p>
+            </div>
+            <div class="icon"><i class="fas fa-cash-register"></i></div>
+            <a href="/add_product" class="small-box-footer">Sell Items <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+
+        <!-- View Items -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-indigo">
+            <div class="inner">
+              <h5>Items</h5>
+              <p>View items</p>
+            </div>
+            <div class="icon"><i class="fas fa-receipt"></i></div>
+            <a href="/products" class="small-box-footer">View Items <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+
+        <!-- Restock Items -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-danger">
+            <div class="inner">
+              <h5>Restock Items</h5>
+              <p>Add QTY</p>
+            </div>
+            <div class="icon"><i class="fas fa-calendar-minus"></i></div>
+            <a href="/p_restock" class="small-box-footer">Restocking <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+<script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+<script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/static/assets/js/adminlte.js"></script>
+
+<script>
+  $(document).ready(function () {
+    // Flash Message
+    if ($('#flashMessageContainer').length) {
+      $('#flashMessageContainer').fadeIn(500).delay(3000).fadeOut(1000);
+    }
+
+    $('#close-notification').on('click', function () {
+      $('#notification').fadeOut();
+    });
+  });
+
+  function showNotification(message) {
+    $('#notification-message').text(message);
+    $('#notification').fadeIn();
+    setTimeout(() => $('#notification').fadeOut(), 7000);
+  }
+</script>
+{% endblock javascripts %}

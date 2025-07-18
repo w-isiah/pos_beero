@@ -1,0 +1,214 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Users{% endblock %}
+
+{% block body_class %}sidebar-mini{% endblock %}
+
+{% block stylesheets %}
+<!-- Google Font: Source Sans Pro -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+<!-- Ionicons -->
+<link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+<!-- AdminLTE Theme -->
+<link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.3.0/css/responsive.dataTables.min.css">
+<!-- Custom CSS for Flash Messages -->
+<style>
+  .alert-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 80%;
+    display: none;  /* Initially hidden */
+  }
+
+  .alert {
+    opacity: 1;
+    transition: opacity 1s ease-out;
+    margin-bottom: 10px;
+  }
+
+  .alert.alert-dismissible {
+    padding-right: 30px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Content Wrapper -->
+<div class="content-wrapper">
+
+  <!-- Content Header -->
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>Users</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="/index">Home</a></li>
+            <li class="breadcrumb-item"><a href="/manage_users">Users</a></li>
+            <li class="breadcrumb-item active">User List</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="alert-container" id="flashMessageContainer">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            <strong>{{ message }}</strong>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Main Content -->
+  <section class="content">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between">
+              <h3 class="card-title">User List</h3>
+
+              <div>
+            <a href="/add_user" class="btn btn-primary btn-sm">
+              <i class="fas fa-plus-circle"></i> Add User
+            </a>
+
+          </div>
+            </div>
+
+            <!-- Card Body -->
+            <div class="card-body">
+              <div class="table-responsive">
+                <table id="accounts" class="display stripe nowrap" style="width:100%">
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th>Activity Logs</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for user in users %}
+                      <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.role }}</td>
+                        
+                        <!-- User Status -->
+                        <td id="user-status-{{ user.id }}">
+                          {% if user.is_online %}
+                            <span class="badge badge-success">Online</span>
+                          {% else %}
+                            <span class="badge badge-danger">Offline</span>
+                          {% endif %}
+                        </td>
+                        
+                        <td>
+                          <a href="/activity_logs/{{ user.id }}" class="btn btn-warning btn-sm" data-toggle="tooltip" data-placement="top" title="View Activity Logs">
+                            <i class="fas fa-edit"></i> View
+                          </a>
+                        </td>
+                        <td>
+                          <div class="btn-group" role="group">
+                            <a href="/edit_user/{{ user.id }}" class="btn btn-warning btn-sm" data-toggle="tooltip" data-placement="top" title="Edit User">
+                              <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{{ url_for('authentication_blueprint.delete_user', id=user.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this user: {{ user.username }}?');" data-toggle="tooltip" data-placement="top" title="Delete User">
+                              <i class="fas fa-trash"></i> Delete
+                            </a>
+                          </div>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <!-- /.card-body -->
+          </div>
+          <!-- /.card -->
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- /.content -->
+</div>
+<!-- /.content-wrapper -->
+
+{% endblock %}
+
+{% block javascripts %}
+<!-- jQuery -->
+<script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+<!-- Bootstrap Bundle -->
+<script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE -->
+<script src="/static/assets/js/adminlte.js"></script>
+<!-- DataTables -->
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.3.0/js/dataTables.responsive.min.js"></script>
+
+<script>
+  $(document).ready(function() {
+    // Initialize DataTables
+    $('#accounts').DataTable({
+      paging: true,
+      searching: true,
+      ordering: true,
+      responsive: true,
+      stripeClasses: ['odd', 'even'],
+      language: {
+        paginate: {
+          next: 'Next',
+          previous: 'Previous'
+        }
+      }
+    });
+
+    // Function to update user status dynamically
+    function updateUserStatus(userId) {
+      $.ajax({
+        url: '/get_user_status/' + userId,  // Call the route to fetch status
+        method: 'GET',
+        success: function(response) {
+          var statusBadge = $('#user-status-' + userId);  // Target the specific user status by ID
+          
+          // Update status based on the response
+          if (response.status === 'online') {
+            statusBadge.html('<span class="badge badge-success">Online</span>');
+          } else {
+            statusBadge.html('<span class="badge badge-danger">Offline</span>');
+          }
+        }
+      });
+    }
+
+    // Polling every 10 seconds to update the status of each user
+    setInterval(function() {
+      {% for user in users %}
+        updateUserStatus({{ user.id }});
+      {% endfor %}
+    }, 10000);  // Every 10 seconds
+  });
+</script>
+{% endblock %}

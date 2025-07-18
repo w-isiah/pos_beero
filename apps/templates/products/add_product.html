@@ -1,0 +1,192 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Add Item {% endblock %}
+
+{% block body_class %} sidebar-mini layout-footer-fixed {% endblock body_class %}
+
+{% block stylesheets %}
+  <!-- Google Font: Source Sans Pro -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+  <!-- Theme style -->
+  <link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+  <!-- Select2 CSS -->
+  <link href="/static/assets/css/select2.min.css" rel="stylesheet" />
+<style>
+  .alert-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 80%;
+    display: none;
+  }
+
+  .alert {
+    opacity: 1;
+    transition: opacity 1s ease-out;
+    margin-bottom: 10px;
+  }
+
+  .alert.alert-dismissible {
+    padding-right: 30px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Content Wrapper -->
+<div class="content-wrapper">
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="alert-container" id="flashMessageContainer">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+      <strong>{{ message }}</strong>
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>Add Item</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="/index">Home</a></li>
+            <li class="breadcrumb-item"><a href="/products">Items</a></li>
+            <li class="breadcrumb-item active">Add Item</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">New Product Details</h3>
+            </div>
+            <div class="card-body">
+              <form action="{{ url_for('products_blueprint.add_product') }}" method="POST" enctype="multipart/form-data" class="form-horizontal">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Category -->
+                <div class="row mb-3">
+                  <label for="category_id" class="col-sm-2 col-form-label">Category:</label>
+                  <div class="col-sm-10">
+                    <select name="category_id" class="form-control select2" required>
+                      {% for i in categories %}
+                        <option value="{{ i.CategoryID }}"> {{ i.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+
+                <!-- SKU -->
+                <div class="row mb-3">
+                  <label for="serial_no" class="col-sm-2 col-form-label">SKU:</label>
+                  <div class="col-sm-10">
+                    <input type="text" name="serial_no" value="{{ random_num }}" class="form-control" required />
+                  </div>
+                </div>
+
+                <!-- Name -->
+                <div class="row mb-3">
+                  <label for="name" class="col-sm-2 col-form-label">Name:</label>
+                  <div class="col-sm-10">
+                    <input type="text" name="name" class="form-control" placeholder="Enter Product Name" required />
+                  </div>
+                </div>
+
+                <!-- Price -->
+                <div class="row mb-3">
+                  <label for="price" class="col-sm-2 col-form-label">Price:</label>
+                  <div class="col-sm-10">
+                    <input type="text" name="price" class="form-control" placeholder="Enter Product Selling Price" required />
+                  </div>
+                </div>
+
+                <!-- Description -->
+                <div class="row mb-3">
+                  <label for="description" class="col-sm-2 col-form-label">Description:</label>
+                  <div class="col-sm-10">
+                    <textarea name="description" class="form-control" placeholder="Enter Product Description"></textarea>
+                  </div>
+                </div>
+
+                <!-- Reorder Level -->
+                <div class="row mb-3">
+                  <label for="reorder_level" class="col-sm-2 col-form-label">Reorder Level:</label>
+                  <div class="col-sm-10">
+                    <input type="number" name="reorder_level" class="form-control" placeholder="Enter Reorder Level" min="1" required />
+                  </div>
+                </div>
+
+                <!-- Image -->
+                <div class="row mb-3">
+                  <label for="image" class="col-sm-2 col-form-label">Product Image:</label>
+                  <div class="col-sm-10">
+                    <input type="file" name="image" class="form-control" accept="image/*" />
+                  </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="form-actions text-end">
+                  <button type="submit" class="btn btn-success btn-sm">Save</button>
+                </div>
+              </form>
+            </div>
+            <div class="card-footer">
+              Footer
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+  <!-- jQuery -->
+  <script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+  <!-- Bootstrap 4 -->
+  <script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <!-- AdminLTE -->
+  <script src="/static/assets/js/adminlte.min.js"></script>
+  <!-- Demo -->
+  <script src="/static/assets/js/demo.js"></script>
+  <!-- Select2 JS -->
+  <script src="/static/assets/js/select2.min.js"></script>
+  <!-- Initialize Select2 -->
+  <script>
+    $(document).ready(function () {
+      $('.select2').select2();
+
+
+
+       // Flash message fade-in and fade-out effect
+    if ($('#flashMessageContainer').length) {
+      $('#flashMessageContainer').fadeIn(500).delay(3000).fadeOut(1000);
+    }
+
+
+
+    });
+  </script>
+{% endblock javascripts %}

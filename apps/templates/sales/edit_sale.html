@@ -1,0 +1,120 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Edit Sale{% endblock %}
+
+{% block body_class %}sidebar-mini{% endblock %}
+
+{% block stylesheets %}
+<!-- Google Font: Source Sans Pro -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+<!-- Ionicons -->
+<link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+<!-- AdminLTE Theme -->
+<link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <section class="content-header">
+    <div class="container-fluid">
+      <h1>Edit Sale</h1>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+              <i class="icon fas 
+                {% if category == 'success' %}fa-check{% elif category == 'danger' or category == 'error' %}fa-exclamation-triangle{% else %}fa-info{% endif %}">
+              </i> {{ message }}
+              <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <div class="card card-primary">
+        <div class="card-header">
+          <h3 class="card-title">Edit Sale Details</h3>
+        </div>
+
+        <form action="{{ url_for('sales_blueprint.edit_sale', salesID=sale.salesID) }}" method="POST" class="form-horizontal">
+          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+          <div class="card-body">
+            <!-- Customer (disabled) -->
+            <div class="form-group row">
+              <label for="customer_id" class="col-sm-3 col-form-label">Customer</label>
+              <div class="col-sm-9">
+                <select name="customer_id" id="customer_id" class="form-control" disabled>
+                  <option disabled value="">-- Select Customer --</option>
+                  {% for c in customers %}
+                    <option value="{{ c.CustomerID }}" {% if c.CustomerID == sale.customer_id %}selected{% endif %}>{{ c.name }}</option>
+                  {% endfor %}
+                </select>
+                <input type="hidden" name="customer_id" value="{{ sale.customer_id }}">
+              </div>
+            </div>
+
+            <!-- Price (disabled) -->
+            <div class="form-group row">
+              <label for="price" class="col-sm-3 col-form-label">Price</label>
+              <div class="col-sm-9">
+                <input type="number" step="0.01" name="price" id="price" class="form-control" value="{{ sale.price }}" disabled>
+                <input type="hidden" name="price" value="{{ sale.price }}">
+              </div>
+            </div>
+
+            <!-- Discount (%) (disabled) -->
+            <div class="form-group row">
+              <label for="discount" class="col-sm-3 col-form-label">Discount (%)</label>
+              <div class="col-sm-9">
+                <input type="number" step="0.01" name="discount" id="discount" class="form-control" value="{{ sale.discount or 0 }}" disabled>
+                <input type="hidden" name="discount" value="{{ sale.discount or 0 }}">
+              </div>
+            </div>
+
+            <!-- Quantity (disabled) -->
+            <div class="form-group row">
+              <label for="qty" class="col-sm-3 col-form-label">Quantity</label>
+              <div class="col-sm-9">
+                <input type="number" name="qty" id="qty" class="form-control" value="{{ sale.qty }}" disabled>
+                <input type="hidden" name="qty" value="{{ sale.qty }}">
+              </div>
+            </div>
+
+            <!-- Date Updated (enabled) -->
+            <div class="form-group row">
+              <label for="date_updated" class="col-sm-3 col-form-label">Date Updated</label>
+              <div class="col-sm-9">
+                <input type="datetime-local" name="date_updated" id="date_updated" class="form-control"
+                       value="{{ sale.date_updated.strftime('%Y-%m-%dT%H:%M') if sale.date_updated else '' }}" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-footer text-right">
+            <button type="submit" class="btn btn-success">Save Changes</button>
+            <a href="{{ url_for('sales_blueprint.sales_view') }}" class="btn btn-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+<script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/static/assets/js/adminlte.min.js"></script>
+{% endblock %}

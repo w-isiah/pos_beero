@@ -1,0 +1,150 @@
+<!-- Main Sidebar Container -->
+<aside class="main-sidebar sidebar-dark-primary elevation-4">
+  <!-- Brand Logo -->
+  <a href="{{ url_for('home_blueprint.index') }}" class="brand-link">
+    <img src="/static/assets/img/AdminLTELogo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
+    <span class="brand-text font-weight-light">Stock MGT</span>
+  </a>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    
+    <!-- User Panel -->
+    <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+      <div class="image">
+        <img src="/static/uploads/{{ session['profile_image'] }}" class="img-circle elevation-2" alt="User Image">
+      </div>
+      <div class="info">
+        <a href="{{ url_for('authentication_blueprint.logout') }}" class="d-block">{{ session['first_name'] }} - Logout</a>
+      </div>
+    </div>
+
+    <!-- Sidebar Search Form -->
+    <div class="form-inline">
+      <div class="input-group" data-widget="sidebar-search">
+        <input class="form-control form-control-sidebar" type="search" placeholder="Search" aria-label="Search">
+        <div class="input-group-append">
+          <button class="btn btn-sidebar">
+            <i class="fas fa-search fa-fw"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar Menu -->
+    <nav class="mt-2">
+      <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+
+        <!-- Dashboard -->
+        <li class="nav-item has-treeview {% if 'index' in segment %} menu-open {% endif %}">
+          <a href="/index" class="nav-link {% if 'index' in segment %} active {% endif %}">
+            <i class="nav-icon fas fa-tachometer-alt"></i>
+            <p>Dashboard <i class="right fas fa-angle-left"></i></p>
+          </a>
+          <ul class="nav nav-treeview">
+            <li class="nav-item">
+              <a href="/index" class="nav-link {% if 'index' in segment %} active {% endif %}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Home</p>
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Sell Items -->
+        <li class="nav-item">
+          <a href="/sales" class="nav-link {% if 'sales' in segment %} active {% endif %}">
+            <i class="nav-icon fas fa-cart-plus"></i>
+            <p>Sell Items <span class="right badge badge-danger">New</span></p>
+          </a>
+        </li>
+
+        <!-- View Sales -->
+        <li class="nav-item has-treeview {% if 'Products' in segment %} menu-open {% endif %}">
+          <a href="/sales_view" class="nav-link {% if 'Products' in segment %} active {% endif %}">
+            <i class="nav-icon fas fa-eye"></i>
+            <p>View Sales <i class="fas fa-angle-left right"></i><span class="badge badge-info right">6</span></p>
+          </a>
+          <ul class="nav nav-treeview">
+            <li class="nav-item">
+              <a href="/sales_view" class="nav-link {% if 'products' in segment %} active {% endif %}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Sales</p>
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Products Section -->
+        <li class="nav-item has-treeview {% if 'Products' in segment %} menu-open {% endif %}">
+          <a href="/products" class="nav-link {% if 'Products' in segment %} active {% endif %}">
+            <i class="nav-icon fas fa-cogs"></i>
+            <p>Items <i class="fas fa-angle-left right"></i><span class="badge badge-info right">6</span></p>
+          </a>
+          <ul class="nav nav-treeview">
+            <li class="nav-item">
+              <a href="/products" class="nav-link {% if 'products' in segment %} active {% endif %}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>View Items</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{{ url_for('products_blueprint.add_product') }}" class="nav-link {% if 'add_product' in segment %} active {% endif %}">
+                <i class="far fa-plus-square nav-icon"></i>
+                <p>Add Item</p>
+              </a>
+            </li>
+            
+
+            
+          </ul>
+        </li>
+
+        <!-- Categories Section -->
+        <li class="nav-item has-treeview {% if 'Categories' in segment %} menu-open {% endif %}">
+          <a href="/categories" class="nav-link {% if 'Categories' in segment %} active {% endif %}">
+            <i class="nav-icon fas fa-th"></i>
+            <p>Categories <i class="fas fa-angle-left right"></i><span class="badge badge-info right">6</span></p>
+          </a>
+          <ul class="nav nav-treeview">
+            <li class="nav-item">
+              <a href="/categories" class="nav-link {% if 'categories' in segment %} active {% endif %}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>View Categories</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="/add_category" class="nav-link {% if 'add_category' in segment %} active {% endif %}">
+                <i class="far fa-plus-square nav-icon"></i>
+                <p>Add Category</p>
+              </a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Customers Section -->
+        <li class="nav-item has-treeview {% if 'Customers' in segment %} menu-open {% endif %}">
+          <a href="/customers" class="nav-link {% if 'Customers' in segment %} active {% endif %}">
+            <i class="nav-icon fas fa-users"></i>
+            <p>Customers <i class="fas fa-angle-left right"></i><span class="badge badge-info right">6</span></p>
+          </a>
+          <ul class="nav nav-treeview">
+            <li class="nav-item">
+              <a href="/customers" class="nav-link {% if 'customers' in segment %} active {% endif %}">
+                <i class="far fa-circle nav-icon"></i>
+                <p>View Customers</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{{ url_for('customers_blueprint.add_customer') }}" class="nav-link {% if 'add_customer' in segment %} active {% endif %}">
+                <i class="far fa-plus-square nav-icon"></i>
+                <p>Add Customer</p>
+              </a>
+            </li>
+          </ul>
+        </li>
+
+      </ul>
+    </nav>
+  </div>
+</aside>

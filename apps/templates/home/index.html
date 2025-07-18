@@ -1,0 +1,281 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Dashboard {% endblock %}
+
+{% block body_class %} sidebar-mini {% endblock %}
+
+{% block stylesheets %}
+<!-- Google Font -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+<!-- Ionicons -->
+<link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+<!-- AdminLTE -->
+<link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.dataTables.min.css">
+<link rel="stylesheet" href="/static/assets/css/mine.css">
+
+<style>
+  .alert-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 80%;
+    display: none;
+  }
+
+  .alert { transition: opacity 1s ease-out; margin-bottom: 10px; }
+
+  .notification {
+    background-color: #fefefe;
+    border: 1px solid #ccc;
+    padding: 10px 15px;
+    border-radius: 4px;
+    display: none;
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+  }
+
+  .notification .close-btn {
+    float: right;
+    background: transparent;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    color: #888;
+    cursor: pointer;
+  }
+
+  th, td {
+    white-space: nowrap;
+  }
+
+  div.dataTables_wrapper {
+    width: 100%;
+    margin: 0 auto;
+  }
+</style>
+{% endblock stylesheets %}
+
+{% block content %}
+<div class="content-wrapper">
+  <div class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1 class="m-0 text-dark">Dashboard</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="/index">Home</a></li>
+            <li class="breadcrumb-item active">Dashboard</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="alert-container" id="flashMessageContainer">
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        <strong>{{ message }}</strong>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <div id="notification" class="notification">
+    <span id="notification-message"></span>
+    <button id="close-notification" class="close-btn">&times;</button>
+  </div>
+
+  <section class="content">
+    <div class="container-fluid">
+      <!-- Dashboard Boxes -->
+      <div class="row">
+        <!-- Sell Items -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-primary">
+            <div class="inner">
+              <h5>Today's QTY Sales: {{ total_items_sold_today_value or 0 }}</h5>
+              <p>Sell</p>
+            </div>
+            <div class="icon"><i class="fas fa-cash-register"></i></div>
+            <a href="/sales" class="small-box-footer">Sell Items <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+
+        <!-- Expenses -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-indigo">
+            <div class="inner">
+              <h5>Today's Expenses: {{ formatted_expenses_today or 0 }}</h5>
+              <p>Expenses</p>
+            </div>
+            <div class="icon"><i class="fas fa-receipt"></i></div>
+            <a href="/add_expense" class="small-box-footer">Add Expenses <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+
+        <!-- Sales Today -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-warning">
+            <div class="inner">
+              <h5>{{ total_sales_today }}</h5>
+              <p>Total Sales Today</p>
+            </div>
+            <div class="icon"><i class="fas fa-calendar-day"></i></div>
+            <a href="/sales_view" class="small-box-footer">View Sales <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+
+        <!-- Yesterday -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-danger">
+            <div class="inner">
+              <h5>{{ total_sales_yesterday }}</h5>
+              <p>Yesterday's Sales</p>
+            </div>
+            <div class="icon"><i class="fas fa-calendar-minus"></i></div>
+            <a href="/sales_view" class="small-box-footer">View Sales <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+
+         <!-- Sales Today -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-warning">
+            <div class="inner">
+              <h5>Stock</h5>
+              <p>Activities</p>
+            </div>
+            <div class="icon"><i class="fas fa-calendar-day"></i></div>
+            <a href="/items_index" class="small-box-footer">View Sales <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+
+         <!-- Sales Today -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-warning">
+            <div class="inner">
+              <h5>Customers</h5>
+              <p>Activities</p>
+            </div>
+            <div class="icon"><i class="fas fa-calendar-day"></i></div>
+            <a href="/customers" class="small-box-footer">View Customers <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+
+            <!-- Sales Today -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-warning">
+            <div class="inner">
+              <h5>User Accounts</h5>
+              <p>Activities</p>
+            </div>
+            <div class="icon"><i class="fas fa-calendar-day"></i></div>
+            <a href="/manage_users" class="small-box-footer">View users <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+
+      </div>
+
+     
+
+      <!-- Low Stock Table -->
+      <div class="card mt-4">
+        <div class="card-header border-transparent">
+          <h3 class="card-title">Low Stock</h3>
+        </div>
+        <div class="card-body">
+          <table id="lowStockTable" class="display nowrap table table-bordered" style="width:100%">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th>Quantity</th>
+                <th>SKU</th>
+                <th>Copy</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for product in products_to_reorder %}
+              <tr class="{% if product.quantity < 5 %}table-warning{% endif %}">
+                <td>{{ product.name }}</td>
+                <td>{{ product.quantity }}</td>
+                <td>{{ product.sku }}</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary"
+                          onclick="copyToClipboard({{ product.sku | tojson }})">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock content %}
+
+{% block javascripts %}
+<script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+<script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<script src="/static/assets/js/adminlte.js"></script>
+
+<!-- DataTables & FixedColumns -->
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
+
+<script>
+  $(document).ready(function () {
+    $('#lowStockTable').DataTable({
+      scrollX: true,
+      scrollCollapse: true,
+      paging: false,
+      scrollY: 300,
+      fixedColumns: {
+        leftColumns: 1,
+        rightColumns: 1
+      }
+    });
+
+    // Flash Message
+    if ($('#flashMessageContainer').length) {
+      $('#flashMessageContainer').fadeIn(500).delay(3000).fadeOut(1000);
+    }
+
+    $('#close-notification').on('click', function () {
+      $('#notification').fadeOut();
+    });
+  });
+
+  function showNotification(message) {
+    $('#notification-message').text(message);
+    $('#notification').fadeIn();
+    setTimeout(() => $('#notification').fadeOut(), 7000);
+  }
+
+  function copyToClipboard(sku) {
+    navigator.clipboard.writeText(sku)
+      .then(() => showNotification("SKU copied to clipboard: " + sku))
+      .catch(() => alert("Copy failed"));
+  }
+</script>
+{% endblock javascripts %}

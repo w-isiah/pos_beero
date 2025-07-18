@@ -1,0 +1,156 @@
+{% extends "layouts/base.html" %}
+
+{% block title %} Add Expense {% endblock %}
+
+{% block body_class %} sidebar-mini layout-footer-fixed {% endblock %}
+
+{% block stylesheets %}
+<!-- Google Font: Source Sans Pro -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+<!-- Theme style -->
+<link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+<!-- Select2 CSS -->
+<link href="/static/assets/css/select2.min.css" rel="stylesheet" />
+<style>
+  .alert-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 80%;
+    display: none;
+  }
+
+  .alert {
+    opacity: 1;
+    transition: opacity 1s ease-out;
+    margin-bottom: 10px;
+  }
+
+  .alert.alert-dismissible {
+    padding-right: 30px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+  <div class="alert-container" id="flashMessageContainer">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+      <strong>{{ message }}</strong>
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endwith %}
+
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>Add Expense</h1>
+        </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="/index">Home</a></li>
+            <li class="breadcrumb-item"><a href="/expenses">Expenses</a></li>
+            <li class="breadcrumb-item active">Add Expense</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <div class="card card-primary">
+            <div class="card-header">
+              <h3 class="card-title">New Expense Details</h3>
+            </div>
+            <form action="{{ url_for('expenses_blueprint.add_expense') }}" method="POST" class="form-horizontal">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+              <div class="card-body">
+
+                <!-- Expense Name -->
+                <div class="form-group row">
+                  <label for="expense_name" class="col-sm-3 col-form-label">Expense Name<span class="text-danger">*</span>:</label>
+                  <div class="col-sm-9">
+                    <input type="text" id="expense_name" name="expense_name" class="form-control" placeholder="Enter Expense Name" required>
+                  </div>
+                </div>
+
+                <!-- Amount (Price) -->
+                <div class="form-group row">
+                  <label for="price" class="col-sm-3 col-form-label">Amount<span class="text-danger">*</span>:</label>
+                  <div class="col-sm-9">
+                    <input type="number" id="price" name="price" min="0.01" step="0.01" class="form-control" placeholder="Enter Expense Amount" required>
+                  </div>
+                </div>
+
+                <!-- Description -->
+                <div class="form-group row">
+                  <label for="description" class="col-sm-3 col-form-label">Description:</label>
+                  <div class="col-sm-9">
+                    <textarea id="description" name="description" class="form-control" rows="3" placeholder="Enter Description (optional)"></textarea>
+                  </div>
+                </div>
+
+                <!-- Customer Dropdown -->
+                <div class="form-group row">
+                  <label for="customer_id" class="col-sm-3 col-form-label">Customer<span class="text-danger">*</span>:</label>
+                  <div class="col-sm-9">
+                    <select id="customer_id" name="customer_id" class="form-control select2" required>
+                      <option value="" disabled selected>Select a customer</option>
+                      {% for customer in customers %}
+                      <option value="{{ customer.CustomerID }}">{{ customer.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="card-footer text-right">
+                <button type="submit" class="btn btn-success btn-sm">Save Expense</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<!-- jQuery -->
+<script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+<!-- Bootstrap 4 -->
+<script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE -->
+<script src="/static/assets/js/adminlte.min.js"></script>
+<!-- Select2 JS -->
+<script src="/static/assets/js/select2.min.js"></script>
+<script>
+  $(document).ready(function () {
+    $('.select2').select2();
+
+    if ($('#flashMessageContainer').length) {
+      $('#flashMessageContainer').fadeIn(500).delay(3000).fadeOut(1000);
+    }
+  });
+</script>
+{% endblock %}
