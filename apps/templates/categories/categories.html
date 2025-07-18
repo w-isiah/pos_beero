@@ -46,18 +46,18 @@
 
   <!-- Flash Messages -->
   {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <div class="alert-container" id="flashMessageContainer">
-      {% for category, message in messages %}
-      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-        <strong>{{ message }}</strong>
-        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      {% endfor %}
+  {% if messages %}
+  <div class="alert-container" id="flashMessageContainer">
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+      <strong>{{ message }}</strong>
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
     </div>
-    {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
   {% endwith %}
 
   <!-- Content Header -->
@@ -84,9 +84,16 @@
       <div class="row">
         <div class="col-12">
           <div class="card">
-            <div class="card-header">
-              <h3 class="card-title">Category List</h3>
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h3 class="card-title mb-0">Cateory List</h3>
+
+              <a href="/add_category" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus-circle"></i> Add Category
+              </a>
             </div>
+
+
 
             <!-- Card Body -->
             <div class="card-body">
@@ -104,45 +111,45 @@
                     {% for category in categories %}
                     <tr class="gradeX">
                       <td>{{ category.name }}</td>
-                  
+
 
                       <!-- Edit Button -->
                       <td>
                         <a href="/edit_category/{{ category.CategoryID }}" 
-                           class="btn btn-sm btn-warning" 
-                           style="--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem;">
-                          Edit
-                        </a>
-                      </td>
+                        class="btn btn-sm btn-warning" 
+                        style="--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem;">
+                        Edit
+                      </a>
+                    </td>
 
-                      <!-- Delete Button (Visible to Admin only) -->
-                      <td>
-                        {% if session['role'] == 'admin' %}
-                        <a href="/delete_category/{{ category.CategoryID }}" 
-                           class="btn btn-sm btn-danger" 
-                           style="--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem;"
-                           onclick="return confirm('Are you sure you want to delete {{ category.name }}?')">
-                          Delete
-                        </a>
-                        {% else %}
-                        <!-- Empty cell for non-admin users -->
-                        <span>Admin</span>
-                        {% endif %}
-                      </td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <!-- /.card-body -->
+                    <!-- Delete Button (Visible to Admin only) -->
+                    <td>
+                      {% if session['role'] == 'admin' %}
+                      <a href="/delete_category/{{ category.CategoryID }}" 
+                      class="btn btn-sm btn-danger" 
+                      style="--bs-btn-padding-y: .25rem; --bs-btn-padding-x: .5rem; --bs-btn-font-size: .75rem;"
+                      onclick="return confirm('Are you sure you want to delete {{ category.name }}?')">
+                      Delete
+                    </a>
+                    {% else %}
+                    <!-- Empty cell for non-admin users -->
+                    <span>Admin</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
-          <!-- /.card -->
         </div>
+        <!-- /.card-body -->
       </div>
+      <!-- /.card -->
     </div>
-  </section>
-  <!-- /.content -->
+  </div>
+</div>
+</section>
+<!-- /.content -->
 </div>
 <!-- /.content-wrapper -->
 {% endblock %}

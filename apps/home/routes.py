@@ -30,24 +30,15 @@ def index():
                     flash('User not found. Please log in again.', 'error')
                     return redirect(url_for('authentication_blueprint.login'))
 
-                # Helper function to execute a single-value query
                 def fetch_single_value(query, params=None):
                     cursor.execute(query, params or ())
                     result = cursor.fetchone()
                     return result[next(iter(result))] if result else 0
 
-                # Financial summaries
+                # Financial summaries (optional, keep if needed)
                 total_sales_today = fetch_single_value(
                     '''SELECT SUM(total_price) AS total_sales_today
                        FROM sales WHERE DATE(date_updated) = CURDATE() AND type = 'sales';''')
-
-                total_items_sold_today = fetch_single_value(
-                    '''SELECT SUM(qty) AS total_items_sold_today
-                       FROM sales WHERE DATE(date_updated) = CURDATE() AND type = 'sales';''')
-
-                total_sales_yesterday = fetch_single_value(
-                    '''SELECT SUM(total_price) AS total_sales_yesterday
-                       FROM sales WHERE DATE(date_updated) = CURDATE() - INTERVAL 1 DAY AND type = 'sales';''')
 
                 total_expenses_today = fetch_single_value(
                     '''SELECT SUM(total_price) AS total_expenses_today
@@ -61,22 +52,40 @@ def index():
                 ''')
                 products_to_reorder = cursor.fetchall()
 
-                # Formatting helper
+                # Fetch pending or processing sales for notifications
+                cursor.execute('''
+                    SELECT salesID, ProductID, qty, total_price, order_status, date_updated
+                    FROM sales
+                    WHERE order_status IN ('pending', 'processing')
+                    ORDER BY date_updated DESC
+                    LIMIT 10
+                ''')
+                pending_orders = cursor.fetchall()
+
+                # Format currency helper
                 def format_to_ugx(amount):
                     return f"UGX {amount:,.2f}" if amount else "UGX 0"
 
+                # Prepare notifications based on pending orders
+                notifications = []
+                for order in pending_orders:
+                    notifications.append({
+                        'icon': 'fas fa-shopping-cart',
+                        'text': f"Order #{order['salesID']} ({order['order_status'].capitalize()}) - {order['qty']} items - {format_to_ugx(order['total_price'])}",
+                        'time': order['date_updated'].strftime('%b %d %H:%M')
+                    })
+
                 context = {
                     'total_sales_today': format_to_ugx(total_sales_today),
-                    'total_sales_yesterday': format_to_ugx(total_sales_yesterday),
                     'total_expenses_today': format_to_ugx(total_expenses_today),
-                    'total_items_sold_today': total_items_sold_today or 0,
                     'products_to_reorder': products_to_reorder,
+                    'notifications': notifications,
                     'segment': 'index'
                 }
 
                 if user['role'] == 'admin':
                     return render_template('home/index.html', **context)
-                elif user['role'] == 'class_teacher':
+                elif user['role'] == 'user':
                     return render_template('home/user_index.html', **context)
 
                 flash('Unauthorized role. Please log in again.', 'error')
@@ -85,6 +94,7 @@ def index():
     except Exception as e:
         flash(f"An error occurred: {str(e)}", 'danger')
         return redirect(url_for('authentication_blueprint.login'))
+
 
 
 

@@ -26,7 +26,12 @@
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
+                    {% if session['role'] == 'admin' %}
                     <h1>Sell Items</h1>
+                    {% else %}
+                    <h1>Order Items</h1>
+                    {% endif %}
+
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">

@@ -48,53 +48,68 @@ def p_restock():
 
 
 
-# Route to restock product
-@blueprint.route('/restock_item', methods=['GET', 'POST'])
+@blueprint.route('/restock_item', methods=['POST'])
 def restock_item():
+    # Ensure the user is logged in
+    if 'id' not in session:
+        flash("You must be logged in to restock products.", "danger")
+        return redirect(url_for('authentication_blueprint.login'))
+
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    if request.method == 'POST':
-        # Ensure the user is logged in
-        if 'id' not in session:
-            flash("You must be logged in to restock products.", "danger")
-            return redirect(url_for('authentication_blueprint.login'))  # Redirect to login if not logged in
-
-        # Retrieve form data
+    try:
+        # Retrieve and validate form data
         sku = request.form.get('sku')
-        restock_quantity = int(request.form.get('restock_quantity'))
+        restock_quantity = request.form.get('restock_quantity')
         user_id = session['id']
 
-        # Check if the product exists
+        if not sku or not restock_quantity:
+            flash("Missing SKU or quantity.", "danger")
+            return redirect(url_for('sales_blueprint.p_restock'))
+
+        try:
+            restock_quantity = int(restock_quantity)
+            if restock_quantity <= 0:
+                raise ValueError
+        except ValueError:
+            flash("Restock quantity must be a positive integer.", "warning")
+            return redirect(url_for('sales_blueprint.p_restock'))
+
+        # Fetch product
         cursor.execute('SELECT * FROM product_list WHERE sku = %s', (sku,))
         product = cursor.fetchone()
 
-        if product:
-            # Update the product's quantity
-            new_quantity = product['quantity'] + restock_quantity
-            cursor.execute('UPDATE product_list SET quantity = %s WHERE sku = %s', (new_quantity, sku))
-            connection.commit()
+        if not product:
+            flash(f"Product with SKU {sku} does not exist!", "danger")
+            return redirect(url_for('sales_blueprint.p_restock'))
 
-            # Log the inventory change (restock) with user_id
-            cursor.execute("""
-                INSERT INTO inventory_logs (product_id, quantity_change, reason, log_date, user_id)
-                VALUES (%s, %s, %s, NOW(), %s)
-            """, (product['ProductID'], restock_quantity, 'restock', user_id))
-            connection.commit()
+        # Update quantity
+        new_quantity = product['quantity'] + restock_quantity
+        cursor.execute('UPDATE product_list SET quantity = %s WHERE sku = %s', (new_quantity, sku))
+        connection.commit()
 
-            # Flash a success message
-            flash(f"Product with SKU {sku} has been restocked successfully. New quantity: {new_quantity}.")
-        else:
-            flash(f"Product with SKU {sku} does not exist!")
+        # Log restock
+        cursor.execute("""
+            INSERT INTO inventory_logs (product_id, quantity_change, reason, log_date, user_id)
+            VALUES (%s, %s, %s, NOW(), %s)
+        """, (product['ProductID'], restock_quantity, 'restock', user_id))
+        connection.commit()
 
-    # Fetch the list of products to display in the template
-    cursor.execute('SELECT * FROM product_list')
-    products = cursor.fetchall()
+        flash(f"✅ Restocked {restock_quantity} units of '{product['name']}' (SKU: {sku}). New quantity: {new_quantity}.", "success")
 
-    cursor.close()
-    connection.close()
+    except Exception as e:
+        connection.rollback()
+        logging.exception("Error during restock operation")
+        flash("⚠️ An unexpected error occurred during restocking.", "danger")
 
-    return render_template('p_restock/p_restock.html', segment='p_restock', products=products)
+    finally:
+        cursor.close()
+        connection.close()
+
+    # Redirect to avoid form re-submission
+    return redirect(url_for('sales_blueprint.p_restock'))
+
 
 
 # Route to handle template rendering

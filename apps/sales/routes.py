@@ -60,7 +60,6 @@ def get_kampala_time():
 
 
 
-
 @blueprint.route('/save_sale', methods=['POST'])
 def save_sale():
     connection = None
@@ -70,6 +69,10 @@ def save_sale():
             return jsonify({'message': 'You must be logged in to make a sale.'}), 401
 
         user_id = session['id']
+        user_role = session.get('role', 'user')  # Default to 'user' role
+        order_status = 'pending' if user_role == 'user' else 'completed'
+        log_time = get_kampala_time()
+
         data = request.get_json()
         customer_id = data.get('customer_id')
         items = data.get('cart_items')
@@ -78,7 +81,6 @@ def save_sale():
 
         current_app.logger.debug(f"Received data: {data}")
 
-        # Validate required fields
         if not customer_id or not items:
             return jsonify({'message': 'Missing customer ID or cart items.'}), 400
         if len(items) == 0:
@@ -90,11 +92,11 @@ def save_sale():
         cursor = connection.cursor(dictionary=True)
         connection.start_transaction()
 
-        # Insert into sales_summary
+        # Insert into sales_summary with user_id, order_status, and created_at
         cursor.execute("""
-            INSERT INTO sales_summary (customer_id, total_price, discounted_price)
-            VALUES (%s, %s, %s)
-        """, (customer_id, total_price, discounted_price))
+            INSERT INTO sales_summary (customer_id, total_price, discounted_price, order_status, user_id, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (customer_id, total_price, discounted_price, order_status, user_id, log_time))
         sale_id = cursor.lastrowid
 
         for item in items:
@@ -105,39 +107,37 @@ def save_sale():
             total_item_price = item.get('total_price')
             discounted_item_price = item.get('discounted_price')
 
-            current_app.logger.debug(f"Processing item: {item}")
-
             if not price or not quantity or quantity <= 0:
                 return jsonify({'message': f'Invalid data for product ID {product_id}.'}), 400
             if total_item_price is None or discounted_item_price is None:
                 return jsonify({'message': f'Missing price data for product ID {product_id}.'}), 400
 
-            # Insert sale item with date_updated and type='sales'
-            log_time = get_kampala_time()
+            # Insert into sales table with order_status and user_id
             cursor.execute("""
                 INSERT INTO sales (
                     ProductID, customer_id, price, discount, qty, total_price,
-                    discounted_price, date_updated, type
+                    discounted_price, date_updated, type, user_id, order_status
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 product_id, customer_id, price, discount, quantity,
-                total_item_price, discounted_item_price, log_time, 'sales'
+                total_item_price, discounted_item_price, log_time,
+                'sales', user_id, order_status
             ))
 
-            # Update inventory
-            cursor.execute("""
-                UPDATE product_list SET quantity = quantity - %s WHERE ProductID = %s
-            """, (quantity, product_id))
+            # Only update inventory if user is NOT a basic 'user'
+            if user_role != 'user':
+                cursor.execute("""
+                    UPDATE product_list SET quantity = quantity - %s WHERE ProductID = %s
+                """, (quantity, product_id))
 
-            # Log inventory change with Kampala time
-            cursor.execute("""
-                INSERT INTO inventory_logs (product_id, quantity_change, reason, log_date, user_id)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (product_id, -quantity, 'sale', log_time, user_id))
+                cursor.execute("""
+                    INSERT INTO inventory_logs (product_id, quantity_change, reason, log_date, user_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (product_id, -quantity, 'sale', log_time, user_id))
 
         connection.commit()
-        return jsonify({'message': 'Sale data added and inventory updated successfully!'}), 201
+        return jsonify({'message': 'Sale submitted successfully!'}), 201
 
     except Exception as e:
         if connection:
@@ -151,6 +151,7 @@ def save_sale():
             cursor.close()
         if connection:
             connection.close()
+
 
 
 
@@ -278,6 +279,138 @@ def sales_view():
 
 
 
+
+@blueprint.route('/mark_order_complete', methods=['POST'])
+def mark_order_complete():
+    if 'id' not in session or session.get('role') != 'user':
+        flash('Unauthorized', 'danger')
+        return redirect(url_for('authentication_blueprint.login'))
+
+    sales_id = request.form.get('salesID')
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("SELECT order_status FROM sales WHERE salesID = %s", (sales_id,))
+        order = cursor.fetchone()
+        if order and order[0] == 'processing':
+            cursor.execute("UPDATE sales SET order_status = 'complete' WHERE salesID = %s", (sales_id,))
+            connection.commit()
+            flash('Order marked as complete.', 'success')
+        else:
+            flash('Only processing orders can be marked as complete.', 'warning')
+    finally:
+        cursor.close()
+        connection.close()
+    return redirect(url_for('sales_blueprint.orders_view'))
+
+
+
+
+
+
+
+@blueprint.route('/update_order_status', methods=['POST'])
+def update_order_status():
+    if 'id' not in session or session.get('role') != 'admin':
+        flash('Admin privileges required.', 'danger')
+        return redirect(url_for('authentication_blueprint.login'))
+
+    sales_id = request.form.get('salesID')
+    new_status = request.form.get('order_status')
+
+    if new_status not in ['processing', 'canceled']:
+        flash('Invalid status.', 'warning')
+        return redirect(url_for('sales_blueprint.orders_view'))
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    try:
+        cursor.execute("UPDATE sales SET order_status = %s WHERE salesID = %s", (new_status, sales_id))
+        connection.commit()
+        flash('Order status updated.', 'success')
+    finally:
+        cursor.close()
+        connection.close()
+
+    return redirect(url_for('sales_blueprint.orders_view'))
+
+
+
+
+
+@blueprint.route('/orders_view', methods=['GET', 'POST'])
+def orders_view():
+    if 'id' not in session:
+        flash('Login required to access this page.', 'error')
+        return redirect(url_for('authentication_blueprint.login'))
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        # Fetch user info
+        cursor.execute("SELECT * FROM users WHERE id = %s", (session['id'],))
+        user = cursor.fetchone()
+        if not user:
+            flash('User not found. Please log in again.', 'error')
+            return redirect(url_for('authentication_blueprint.login'))
+
+        today = datetime.today().strftime('%Y-%m-%d')
+        start_date = request.form.get('start_date', today)
+        end_date = request.form.get('end_date', today)
+        searched = request.method == 'POST'
+
+        # ---- Pending + Processing Sales Data ----
+        cursor.execute("""
+            SELECT 
+                s.salesID,
+                p.name AS product_name,
+                c.name AS customer_name,
+                s.price,
+                s.discount,
+                s.discounted_price,
+                s.qty,
+                s.date_updated,
+                s.order_status
+            FROM sales s
+            JOIN product_list p ON s.ProductID = p.ProductID
+            JOIN customer_list c ON s.customer_id = c.CustomerID
+            WHERE s.type = 'sales'
+              AND s.order_status IN ('pending', 'processing')
+              AND DATE(s.date_updated) BETWEEN %s AND %s
+            ORDER BY s.date_updated DESC
+        """, (start_date, end_date))
+        sales = cursor.fetchall()
+
+        # ---- Totals for Pending + Processing ----
+        cursor.execute("""
+            SELECT 
+                SUM(s.qty) AS total_quantity,
+                SUM(s.total_price) AS total_sales
+            FROM sales s
+            WHERE s.type = 'sales'
+              AND s.order_status IN ('pending', 'processing')
+              AND DATE(s.date_updated) BETWEEN %s AND %s
+        """, (start_date, end_date))
+        totals = cursor.fetchone()
+        total_sales = totals['total_sales'] or 0
+        total_quantity = totals['total_quantity'] or 0
+
+    finally:
+        cursor.close()
+        connection.close()
+
+    return render_template(
+        'sales/orders_view.html',
+        user=user,
+        sales=sales,
+        total_sales=f"{total_sales:,.2f}",
+        total_quantity=f"{total_quantity:,}",
+        start_date=start_date,
+        end_date=end_date,
+        searched=searched,
+        segment='orders_view'
+    )
 
 
 

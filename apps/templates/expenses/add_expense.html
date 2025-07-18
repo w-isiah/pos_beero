@@ -76,9 +76,17 @@
       <div class="row justify-content-center">
         <div class="col-md-8">
           <div class="card card-primary">
-            <div class="card-header">
-              <h3 class="card-title">New Expense Details</h3>
-            </div>
+           
+<div class="card-header d-flex justify-content-between align-items-center bg-gradient-primary text-white">
+  <h3 class="card-title mb-0">New Expense</h3>
+
+  <a href="/sales_view" class="btn btn-sm btn-light text-primary">
+    <i class="fas fa-list"></i> Expenses List
+  </a>
+</div>
+
+
+
             <form action="{{ url_for('expenses_blueprint.add_expense') }}" method="POST" class="form-horizontal">
               <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
 
