@@ -35,14 +35,23 @@ def index():
                     result = cursor.fetchone()
                     return result[next(iter(result))] if result else 0
 
-                # Financial summaries (optional, keep if needed)
+                # Financial summaries (only completed sales)
                 total_sales_today = fetch_single_value(
                     '''SELECT SUM(total_price) AS total_sales_today
-                       FROM sales WHERE DATE(date_updated) = CURDATE() AND type = 'sales';''')
+                       FROM sales
+                       WHERE DATE(date_updated) = CURDATE()
+                         AND type = 'sales'
+                         AND order_status = 'Completed'
+                    ;'''
+                )
 
                 total_expenses_today = fetch_single_value(
                     '''SELECT SUM(total_price) AS total_expenses_today
-                       FROM sales WHERE DATE(date_updated) = CURDATE() AND type = 'expense';''')
+                       FROM sales
+                       WHERE DATE(date_updated) = CURDATE()
+                         AND type = 'expense'
+                    ;'''
+                )
 
                 # Products to reorder
                 cursor.execute('''
@@ -94,6 +103,7 @@ def index():
     except Exception as e:
         flash(f"An error occurred: {str(e)}", 'danger')
         return redirect(url_for('authentication_blueprint.login'))
+
 
 
 

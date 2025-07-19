@@ -100,17 +100,7 @@
     <div class="container-fluid">
       <!-- Dashboard Boxes -->
       <div class="row">
-        <!-- Add Item -->
-        <div class="col-lg-3 col-6">
-          <div class="small-box bg-primary">
-            <div class="inner">
-              <h5>Add Item</h5>
-              <p>to Stock</p>
-            </div>
-            <div class="icon"><i class="fas fa-cash-register"></i></div>
-            <a href="/add_product" class="small-box-footer">Sell Items <i class="fas fa-arrow-circle-right"></i></a>
-          </div>
-        </div>
+      
 
         <!-- View Items -->
         <div class="col-lg-3 col-6">
@@ -124,6 +114,21 @@
           </div>
         </div>
 
+
+{% if session['role'] == 'admin' %}
+  <!-- Add Item -->
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-primary">
+            <div class="inner">
+              <h5>Add Item</h5>
+              <p>to Stock</p>
+            </div>
+            <div class="icon"><i class="fas fa-cash-register"></i></div>
+            <a href="/add_product" class="small-box-footer">Sell Items <i class="fas fa-arrow-circle-right"></i></a>
+          </div>
+        </div>
+
+
         <!-- Restock Items -->
         <div class="col-lg-3 col-6">
           <div class="small-box bg-danger">
@@ -135,6 +140,10 @@
             <a href="/p_restock" class="small-box-footer">Restocking <i class="fas fa-arrow-circle-right"></i></a>
           </div>
         </div>
+{% endif %}
+
+
+        
       </div>
     </div>
   </section>

@@ -1,366 +1,388 @@
 {% extends "layouts/base.html" %}
 
-{% block title %} Sales {% endblock %}
+{% block title %}Sales{% endblock %}
 
-{% block body_class %} sidebar-mini layout-footer-fixed {% endblock %}
+{% block body_class %}sidebar-mini layout-footer-fixed{% endblock %}
 
 {% block stylesheets %}
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
 <link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
 <link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
-<link rel="stylesheet" href="/static/assets/css/mine.css">
-<link href="/static/assets/css//select2.min.css" rel="stylesheet" />
-<link href="/static/assets/css/select2.min.css" rel="stylesheet" /> 
+<link href="/static/assets/css/select2.min.css" rel="stylesheet" />
+<style>
+  #notification {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1051;
+    display: none;
+    min-width: 300px;
+  }
+</style>
 {% endblock stylesheets %}
 
 {% block content %}
 <div class="content-wrapper">
-    <section class="content-header">
-        <div id="notification" class="notification" style="display: none;">
-            <div class="notification-content">
-                <span id="notification-message"></span>
-                <button id="close-notification" class="close-btn">X</button>
-            </div>
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6">
+          <h1>{% if session['role'] == 'admin' %}Sell Items{% else %}Order Items{% endif %}</h1>
         </div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="/index">Home</a></li>
+            <li class="breadcrumb-item active">sell_items</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
 
-        <div class="container-fluid">
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    {% if session['role'] == 'admin' %}
-                    <h1>Sell Items</h1>
+  <section class="content">
+    <div class="container-fluid">
+
+      <!-- Notification Alert -->
+      <div id="notification" class="alert alert-info alert-dismissible fade show" role="alert">
+        <span id="notification-message"></span>
+        <button type="button" class="close" id="close-notification" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+
+      <!-- Form row -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card card-primary">
+            <div class="card-header">
+              <h3 class="card-title">Add Product to Cart</h3>
+            </div>
+            <form id="pos-form" autocomplete="off" class="p-3">
+              <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+              <div class="form-group">
+                <label for="customer-id">Customer</label>
+                <select id="customer-id" name="customer-id" class="form-control select2" required>
+                  <option value="" disabled selected>Select Customer</option>
+                  {% for customer in customers %}
+                  <option value="{{ customer.CustomerID }}">{{ customer.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="product-id">Product</label>
+                <select id="product-id" name="product-id" class="form-control select2" required>
+                  <option value="" disabled selected>Select Product</option>
+                  {% for product in products %}
+                    {% if product.price is not none and product.price > 0 %}
+                      <option
+                        value="{{ product.ProductID }}"
+                        data-available="{{ product.quantity }}"
+                        data-price="{{ product.price }}">
+                        {{ product.name }} | {{ product.category_name }} | {{ "{:,}".format(product.price) }} Ugx | Available: {{ "{:,}".format(product.quantity) }}
+                      </option>
                     {% else %}
-                    <h1>Order Items</h1>
+                      <option value="{{ product.ProductID }}" disabled>
+                        {{ product.name }} (Price unavailable)
+                      </option>
                     {% endif %}
+                  {% endfor %}
+                </select>
+              </div>
 
-                </div>
-                <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-right">
-                        <li class="breadcrumb-item"><a href="/index">Home</a></li>
-                        <li class="breadcrumb-item active">sell_items</li>
-                    </ol>
-                </div>
-            </div>
+              <div class="form-group">
+                <label for="product-qty">Quantity</label>
+                <input id="product-qty" type="number" min="1" name="quantity" class="form-control" placeholder="Enter Quantity" disabled required>
+                <small id="available-qty-info" class="form-text text-muted">Available: 0</small>
+              </div>
+
+              <div class="form-group">
+                <label for="discount">Discount (%)</label>
+                <input id="discount" type="number" min="0" max="100" step="0.01" name="discount" class="form-control" placeholder="Enter Discount Percentage" disabled value="0">
+              </div>
+
+              <button type="button" id="add_item" class="btn btn-primary btn-block" disabled>Add to Cart</button>
+            </form>
+          </div>
         </div>
-    </section>
+      </div>
 
-    <section class="content">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3 class="card-title">Title</h3>
-                            <div class="card-tools">
-                                <div class="btn-group mb-2" role="group" aria-label="Basic outlined example">
-                                    <a href="/sales_view">
-                                        <button type="button" class="btn btn-sm btn-outline-primary">View Sales</button>
-                                    </a>
-                                    
-                                    <a href="/discount_percentage" target="_blank">
-                                        <button type="button" target="_blank" class="btn btn-sm btn-outline-primary">Calculate Discount (%)</button>
-                                    </a>
-                                </div>
-                                <button type="button" class="btn btn-tool" data-card-widget="collapse" title="Collapse">
-                                    <i class="fas fa-minus"></i>
-                                </button>
-                                <button type="button" class="btn btn-tool" data-card-widget="remove" title="Remove">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <form id="pos-form">
-                                        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-
-                                        <div class="form-group mb-3">
-                                            <label for="customer-id">Customer</label>
-                                            <select id="customer-id" name="customer-id" class="form-control select2">
-                                                <option value="" disabled selected>Select Customer</option>
-                                                {% for customer in customers %}
-                                                <option value="{{ customer.CustomerID }}">{{ customer.name }}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-
-                                        <div class="form-group mb-3">
-                                            <label for="product-id">Product</label>
-                                            <select id="product-id" name="product-id" class="form-control select2">
-                                                <option value="" disabled selected>Select Product</option>
-                                                {% for product in products %}
-                                                <option data-available="{{ product.quantity }}" data-price="{{ product.price }}" value="{{ product.ProductID }}">{{ product.name }}|{{product.category_name}}|{{product.price}}||{{product.quantity}}</option>
-                                                {% endfor %}
-                                            </select>
-                                        </div>
-
-                                        <div class="form-group mb-3">
-                                            <label for="product-qty">Quantity</label>
-                                            <input id="product-qty" type="number" min="1" name="quantity" class="form-control" placeholder="Enter Quantity" required>
-                                            <small id="available-qty-info" class="form-text text-muted">Available: 0</small>
-                                        </div>
-
-                                        <div class="form-group mb-3">
-                                            <label for="discount">Discount (%)</label>
-                                            <input id="discount" type="number" min="0" max="100" name="discount" class="form-control" placeholder="Enter Discount Percentage" step="0.01">
-                                        </div>
-
-                                        <div class="form-group">
-                                            <button type="button" id="add_item" class="btn btn-primary btn-sm">Add to Cart</button>
-                                        </div>
-                                    </form>
-                                </div>
-
-                                <div class="col-md-8">
-                                    <h4>Cart Summary</h4>
-                                    <div id="cart-list">
-                                        <table id="cart-table" class="table table-striped">
-                                            <thead>
-                                                <tr>
-                                                    <th>Product</th>
-                                                    <th>Quantity</th>
-                                                    <th>Total Price</th>
-                                                    <th>Discount (%)</th>
-                                                    <th>Discounted Price</th>
-                                                    <th>Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="item-list"></tbody>
-                                        </table>
-
-                                        <div class="total-price">
-                                            <strong>Total: </strong><span id="total-price">0.00 Ugx</span>
-                                        </div>
-
-                                        <div class="form-group mb-3">
-                                            <label for="amount-tendered">Amount Tendered</label>
-                                            <input id="amount-tendered" type="number" min="0" name="amount-tendered" class="form-control" placeholder="Enter Amount Tendered" step="0.01">
-                                        </div>
-
-                                        <div class="total-price">
-                                            <strong>Change: </strong><span id="change">0.00 Ugx</span>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <button type="button" id="checkout" class="btn btn-success btn-sm">Checkout</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card-footer">Footer</div>
-                    </div>
-                </div>
+      <!-- Cart summary row -->
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card card-warning">
+            <div class="card-header">
+              <h3 class="card-title">Cart Summary</h3>
             </div>
+            <div class="card-body p-0">
+              <table id="cart-table" class="table table-striped table-bordered mb-0">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th style="width: 100px;">Quantity</th>
+                    <th>Total Price</th>
+                    <th>Discount (%)</th>
+                    <th>Discounted Price</th>
+                    <th style="width: 80px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="item-list"></tbody>
+              </table>
+            </div>
+
+            <div class="card-footer d-flex justify-content-between align-items-center">
+              <div><strong>Total:</strong> <span id="total-price">0.00 Ugx</span></div>
+              <div class="form-inline">
+                <label for="amount-tendered" class="mr-2 mb-0">Amount Tendered</label>
+                <input id="amount-tendered" type="number" min="0" step="0.01" class="form-control form-control-sm mr-2" placeholder="Enter amount" disabled>
+                <strong>Change:</strong> <span id="change" class="ml-2">0.00 Ugx</span>
+              </div>
+              <button id="checkout" class="btn btn-success btn-sm" disabled>Checkout</button>
+            </div>
+          </div>
         </div>
-    </section>
+      </div>
+
+    </div>
+  </section>
 </div>
 {% endblock content %}
 
 {% block javascripts %}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-
 <script src="/static/assets/js/select2.min.js"></script>
-
 <script>
-    $(document).ready(function() {
-    // Initialize Select2 for dropdowns
+  $(document).ready(function () {
+    // Initialize Select2
     $('select').select2({
-        placeholder: "Search...",
-        allowClear: true
+      placeholder: "Search...",
+      allowClear: true,
+      width: '100%'
     });
 
-    // Handle product selection change
-    $('#product-id').change(function() {
-        const selectedOption = $(this).find('option:selected');
-        const availableQty = selectedOption.data('available');
-        const price = selectedOption.data('price');
+    $('#product-id').on('change', function () {
+      const selectedOption = $(this).find('option:selected');
+      const availableQty = selectedOption.data('available') || 0;
+      const price = selectedOption.data('price');
 
-        $('#available-qty-info').html(`<h3>Available: ${availableQty}</h3>`);
-        $('#product-qty').attr('max', availableQty);
+      if (price && price > 0) {
+        $('#available-qty-info').text(`Available: ${availableQty}`);
+        $('#product-qty').attr({
+          max: availableQty,
+          disabled: false,
+          value: 1,
+          min: 1
+        });
+        $('#discount').prop('disabled', false).val('0');
+        $('#add_item').prop('disabled', false);
+      } else {
+        $('#available-qty-info').text('Available: 0');
+        $('#product-qty').prop('disabled', true).val('');
+        $('#discount').prop('disabled', true).val('');
+        $('#add_item').prop('disabled', true);
+      }
     });
 
     let totalAmount = 0;
 
-    // Function to update the total amount displayed
+    function showNotification(message, type = 'info') {
+      const alertType = `alert-${type}`;
+      $('#notification').removeClass('alert-info alert-success alert-danger alert-warning').addClass(alertType);
+      $('#notification-message').text(message);
+      $('#notification').fadeIn();
+
+      setTimeout(() => {
+        $('#notification').fadeOut();
+      }, 5000);
+    }
+
     function updateTotalAmount() {
-        totalAmount = 0;
-        $('#item-list tr').each(function() {
-            totalAmount += parseFloat($(this).find('.discounted-price').text().replace(' Ugx', '')) || 0;
+      totalAmount = 0;
+      $('#item-list tr').each(function () {
+        totalAmount += parseFloat($(this).find('.discounted-price').text().replace(' Ugx', '')) || 0;
+      });
+      $('#total-price').text(`${totalAmount.toFixed(2)} Ugx`);
+
+      if (totalAmount > 0) {
+        $('#amount-tendered').prop('disabled', false);
+        $('#checkout').prop('disabled', false);
+      } else {
+        $('#amount-tendered').prop('disabled', true).val('');
+        $('#change').text('0.00 Ugx');
+        $('#checkout').prop('disabled', true);
+      }
+    }
+
+    $('#add_item').on('click', function (e) {
+      e.preventDefault();
+
+      const productSelect = $('#product-id');
+      const selectedOption = productSelect.find('option:selected');
+      const productId = selectedOption.val();
+      const productName = selectedOption.text();
+      const availableQty = selectedOption.data('available');
+      const price = selectedOption.data('price');
+
+      const quantityInput = $('#product-qty');
+      const discountInput = $('#discount');
+
+      let quantity = parseInt(quantityInput.val(), 10);
+      let discount = parseFloat(discountInput.val()) || 0;
+
+      if (!productId) {
+        showNotification('Please select a product.', 'danger');
+        return;
+      }
+
+      if (isNaN(quantity) || quantity < 1 || quantity > availableQty) {
+        showNotification(`Invalid quantity. Please enter between 1 and ${availableQty}.`, 'danger');
+        return;
+      }
+
+      if (discount < 0 || discount > 100) {
+        showNotification('Discount must be between 0 and 100.', 'danger');
+        return;
+      }
+
+      if ($('#item-list tr').filter(function () { return $(this).data('product-id') == productId; }).length > 0) {
+        showNotification('This product is already in the cart.', 'warning');
+        return;
+      }
+
+      const totalPrice = price * quantity;
+      const discountAmount = totalPrice * (discount / 100);
+      const discountedPrice = totalPrice - discountAmount;
+
+      const row = $(`
+        <tr data-product-id="${productId}">
+          <td>${productName}</td>
+          <td><input type="number" class="form-control cart-qty" value="${quantity}" min="1" max="${availableQty}" data-price="${price}" data-product-id="${productId}"></td>
+          <td class="price">${totalPrice.toFixed(2)} Ugx</td>
+          <td class="item-discount">${discount.toFixed(2)}%</td>
+          <td class="discounted-price">${discountedPrice.toFixed(2)} Ugx</td>
+          <td><button class="btn btn-sm btn-danger remove-item" title="Remove"><i class="fas fa-trash-alt"></i></button></td>
+        </tr>
+      `);
+
+      $('#item-list').append(row);
+      updateTotalAmount();
+
+      $('#product-id').val(null).trigger('change');
+      $('#product-qty').val('').prop('disabled', true);
+      $('#discount').val('0').prop('disabled', true);
+      $('#add_item').prop('disabled', true);
+      $('#available-qty-info').text('Available: 0');
+    });
+
+    $(document).on('change', '.cart-qty', function () {
+      const input = $(this);
+      let newQty = parseInt(input.val(), 10);
+      const maxQty = parseInt(input.attr('max'), 10);
+      const price = parseFloat(input.data('price'));
+      const row = input.closest('tr');
+
+      if (isNaN(newQty) || newQty < 1 || newQty > maxQty) {
+        showNotification(`Quantity must be between 1 and ${maxQty}.`, 'danger');
+        input.val(1);
+        newQty = 1;
+      }
+
+      const totalPrice = price * newQty;
+      const discount = parseFloat(row.find('.item-discount').text());
+      const discountAmount = totalPrice * (discount / 100);
+      const discountedPrice = totalPrice - discountAmount;
+
+      row.find('.price').text(`${totalPrice.toFixed(2)} Ugx`);
+      row.find('.discounted-price').text(`${discountedPrice.toFixed(2)} Ugx`);
+
+      updateTotalAmount();
+    });
+
+    $(document).on('click', '.remove-item', function () {
+      $(this).closest('tr').remove();
+      updateTotalAmount();
+    });
+
+    $('#amount-tendered').on('input', function () {
+      const amountTendered = parseFloat($(this).val()) || 0;
+      const change = amountTendered - totalAmount;
+      $('#change').text(change < 0 ? '0.00 Ugx' : `${change.toFixed(2)} Ugx`);
+    });
+
+    $('#checkout').on('click', function (e) {
+      e.preventDefault();
+
+      if (totalAmount <= 0) {
+        showNotification('Cart is empty.', 'danger');
+        return;
+      }
+
+      const customerID = $('#customer-id').val();
+      if (!customerID) {
+        showNotification('Please select a customer.', 'danger');
+        return;
+      }
+
+      let cartItems = [];
+      $('#item-list tr').each(function () {
+        const row = $(this);
+        const productID = row.data('product-id');
+        const quantity = parseInt(row.find('.cart-qty').val(), 10);
+        const price = parseFloat(row.find('.price').text().replace(' Ugx', ''));
+        const discount = parseFloat(row.find('.item-discount').text());
+        const discountedPrice = parseFloat(row.find('.discounted-price').text().replace(' Ugx', ''));
+
+        cartItems.push({
+          product_id: productID,
+          quantity: quantity,
+          price: price,
+          discount: discount,
+          discounted_price: discountedPrice
         });
-        $('#total-price').text(`${totalAmount.toFixed(2)} Ugx`);
-        $('#amount-tendered').trigger('keyup'); // Update change display
-    }
+      });
 
-    // Show notification function
-    function showNotification(message) {
-        $('#notification-message').text(message); // Set the message
-        $('#notification').fadeIn(); // Show the notification
-
-        // Automatically hide notification after 7 seconds
-        setTimeout(function() {
-            $('#notification').fadeOut();
-        }, 9000);
-    }
-
-    // Handle Add to Cart button click
-    $('#add_item').on('click', function(event) {
-        event.preventDefault(); // Prevent default form submission
-
-        const productSelect = $('#product-id');
-        const quantityInput = $('#product-qty');
-        const discountInput = $('#discount');
-        const quantity = parseInt(quantityInput.val(), 10);
-        const discount = parseFloat(discountInput.val()) || 0;
-
-        const selectedOption = productSelect.find('option:selected');
-        const productName = selectedOption.text();
-        const availableQty = selectedOption.data('available');
-        const price = selectedOption.data('price');
-
-        if (!productName) {
-            showNotification("Please select a product.");
-            return;
-        }
-
-        if (isNaN(quantity) || quantity < 1 || quantity > availableQty) {
-            showNotification(`Invalid quantity. Please enter a valid quantity between 1 and ${availableQty}.`);
-            return;
-        }
-
-        if (price <= 0) {
-            showNotification("Invalid product price. Please select a valid product.");
-            return;
-        }
-
-        const totalPrice = price * quantity;
-        const discountAmount = (totalPrice * discount) / 100;
-        const discountedPrice = totalPrice - discountAmount;
-
-        const row = $('<tr></tr>')
-        .data('product-id', selectedOption.val())
-        .append(`<td>${productName}</td>`)
-        .append(`<td><input type="number" class="form-control cart-qty" value="${quantity}" min="1" max="${availableQty}" data-price="${price}" data-product-id="${selectedOption.val()}"></td>`)
-        .append(`<td class="price">${totalPrice.toFixed(2)} Ugx</td>`)
-        .append(`<td class="item-discount">${discount.toFixed(2)}%</td>`)
-        .append(`<td class="discounted-price">${discountedPrice.toFixed(2)} Ugx</td>`)
-        .append(`<td><button class="btn btn-sm btn-danger remove-item">Remove</button></td>`);
-
-        $('#item-list').append(row);
-        updateTotalAmount();
-
-        quantityInput.val('');
-        discountInput.val('');
-    });
-
-    // Update total price when cart quantity is changed
-    $(document).on('change', '.cart-qty', function() {
-        const newQuantity = parseInt($(this).val(), 10);
-        const maxQuantity = parseInt($(this).attr('max'), 10);
-        const price = parseFloat($(this).data('price'));
-
-        if (newQuantity < 1 || newQuantity > maxQuantity) {
-            showNotification(`Quantity must be between 1 and ${maxQuantity}.`);
-            $(this).val(1);
-            return;
-        }
-
-        const totalPrice = price * newQuantity;
-        const discount = parseFloat($(this).closest('tr').find('.item-discount').text());
-        const discountAmount = (totalPrice * discount) / 100;
-        const discountedPrice = totalPrice - discountAmount;
-
-        $(this).closest('tr').find('.price').text(`${totalPrice.toFixed(2)} Ugx`);
-        $(this).closest('tr').find('.discounted-price').text(`${discountedPrice.toFixed(2)} Ugx`);
-
-        updateTotalAmount();
-    });
-
-    // Remove item from cart
-    $(document).on('click', '.remove-item', function(event) {
-        event.preventDefault(); // Prevent default button action
-        const row = $(this).closest('tr');
-        row.remove();
-        updateTotalAmount();
-    });
-
-    // Handle amount tendered input change
-    $('#amount-tendered').on('keyup', function() {
-        const amountTendered = parseFloat($(this).val()) || 0;
-        const change = amountTendered - totalAmount;
-        $('#change').text(change < 0 ? `0.00 Ugx` : `${change.toFixed(2)} Ugx`);
-    });
-
-    // Handle checkout button click
-    $('#checkout').on('click', function(event) {
-        event.preventDefault(); // Prevent default button action
-
-        if (totalAmount > 0) {
-            const customerID = $('#customer-id').val();
-            const cartItems = [];
-
-            $('#item-list tr').each(function () {
-                const productID = $(this).data('product-id');
-                const quantity = parseInt($(this).find('.cart-qty').val());
-                const price = parseFloat($(this).find('.price').text().replace(' Ugx', ''));
-                const discount = parseFloat($(this).find('.item-discount').text().replace('%', ''));
-                const discountedPrice = parseFloat($(this).find('.discounted-price').text().replace(' Ugx', ''));
-
-                cartItems.push({
-                    product_id: productID,
-                    quantity: quantity,
-                    price: price,
-                    discount: discount,
-                    total_price: price * quantity,
-                    discounted_price: discountedPrice
-                });
-            });
-
-    // Handle AJAX request
-    $.ajax({
+      $.ajax({
         url: '/save_sale',
         method: 'POST',
         contentType: 'application/json',
         headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+          'X-CSRF-TOKEN': '{{ csrf_token() }}'
         },
         data: JSON.stringify({
-            customer_id: customerID,
-            cart_items: cartItems,
-            total_price: totalAmount,
-            discounted_price: totalAmount // Assuming totalAmount reflects the final discounted price
+          customer_id: customerID,
+          cart_items: cartItems,
+          total_price: totalAmount,
+          discounted_price: totalAmount
         }),
-        success: function(response) {
-            showNotification('Success: ' + response.message);
-            $('#pos-form')[0].reset();
-            $('#item-list').empty();
-            $('#total-price').text('0.00 Ugx');
-            $('#change').text('0.00 Ugx');
-            setTimeout(() => location.reload(), 1000);
+        success: function (response) {
+          showNotification('Success: ' + response.message, 'success');
+          $('#pos-form')[0].reset();
+          $('#item-list').empty();
+          $('#total-price').text('0.00 Ugx');
+          $('#amount-tendered').val('').prop('disabled', true);
+          $('#change').text('0.00 Ugx');
+          $('#checkout').prop('disabled', true);
+          $('#product-qty').prop('disabled', true);
+          $('#discount').prop('disabled', true);
+          $('#add_item').prop('disabled', true);
+          $('#available-qty-info').text('Available: 0');
+          $('select').val(null).trigger('change');
+          setTimeout(() => location.reload(), 1500);
         },
-        error: function(xhr) {
-            let errorMessage = 'An error occurred';
-            try {
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
-            } catch (e) {
-                console.error("Error parsing response:", e);
-            }
-            showNotification('Error: ' + errorMessage);
+        error: function (xhr) {
+          let errorMessage = 'An error occurred';
+          if (xhr.responseJSON && xhr.responseJSON.message) {
+            errorMessage = xhr.responseJSON.message;
+          }
+          showNotification('Error: ' + errorMessage, 'danger');
         }
+      });
     });
-}
 
-});
-
-    // Close notification on button click
-    $('#close-notification').on('click', function() {
-        $('#notification').fadeOut();
+    $('#close-notification').on('click', function () {
+      $('#notification').fadeOut();
     });
-});
+  });
 </script>
-{% endblock %}
+{% endblock javascripts %}

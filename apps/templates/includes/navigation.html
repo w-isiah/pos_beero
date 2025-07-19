@@ -1,10 +1,31 @@
+<style>
+  /* Custom dropdown menu sizing and wrapping */
+  .custom-dropdown-menu {
+    min-width: 350px;
+    max-width: 450px;
+    white-space: normal; /* allow multiline wrapping */
+  }
+
+  .custom-dropdown-menu .dropdown-item {
+    white-space: normal !important; /* override nowrap */
+    padding: 8px 12px;
+    font-size: 0.9rem;
+  }
+
+  /* Optional: Adjust badge small size */
+  .badge-sm {
+    font-size: 0.75em;
+    padding: 0.25em 0.4em;
+  }
+</style>
+
 <!-- Navbar -->
 <nav class="main-header navbar navbar-expand navbar-white navbar-light">
   <!-- Left navbar links -->
   <ul class="navbar-nav">
     <!-- Menu Toggle -->
     <li class="nav-item">
-      <a class="nav-link text-secondary" data-widget="pushmenu" href="#" role="button">
+      <a class="nav-link text-secondary" data-widget="pushmenu" href="javascript:void(0);" role="button">
         <i class="fas fa-bars"></i>
       </a>
     </li>
@@ -25,7 +46,7 @@
 
     <!-- Role Display -->
     <li class="nav-item d-none d-sm-inline-block">
-      <a href="#" class="nav-link text-primary">
+      <a href="javascript:void(0);" class="nav-link text-primary">
         <i class="fas fa-user-tag me-1"></i> Role: {{ session['role'] }}
       </a>
     </li>
@@ -35,34 +56,44 @@
   <ul class="navbar-nav ml-auto">
     <!-- Notifications Dropdown -->
     <li class="nav-item dropdown">
-      <a class="nav-link" data-toggle="dropdown" href="#">
+      <a class="nav-link" data-toggle="dropdown" href="javascript:void(0);" aria-haspopup="true" aria-expanded="false" role="button">
         <i class="far fa-bell"></i>
         <span class="badge badge-warning navbar-badge">{{ notifications|length }}</span>
       </a>
-      <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+      <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right custom-dropdown-menu">
         <span class="dropdown-item dropdown-header">{{ notifications|length }} Pending Orders</span>
         <div class="dropdown-divider"></div>
 
         {% if notifications %}
           {% for notification in notifications %}
-            <a href="#" class="dropdown-item">
-              <i class="{{ notification.icon }} mr-2"></i> {{ notification.text }}
-              <span class="float-right text-muted text-sm">{{ notification.time }}</span>
+            <a href="/orders_view" class="dropdown-item d-flex align-items-center justify-content-between" title="{{ notification.text }}">
+              <div>
+                <i class="{{ notification.icon }} mr-2 text-primary"></i>
+                <strong>Order #{{ notification.text.split(' ')[1] }}</strong>
+                <span class="badge badge-sm
+                  {% if 'Pending' in notification.text %}badge-warning
+                  {% elif 'Processing' in notification.text %}badge-info
+                  {% else %}badge-secondary{% endif %} ml-2">
+                  {{ notification.text.split('(')[1].split(')')[0] }}
+                </span>
+                <span class="ml-2">Qty: {{ notification.text.split('-')[1].strip().split(' ')[0] }}</span>
+              </div>
+              <small class="text-muted ml-3">{{ notification.time }}</small>
             </a>
             <div class="dropdown-divider"></div>
           {% endfor %}
         {% else %}
-          <a href="#" class="dropdown-item text-center text-muted">No pending or processing orders</a>
+          <a href="javascript:void(0);" class="dropdown-item text-center text-muted">No pending or processing orders</a>
           <div class="dropdown-divider"></div>
         {% endif %}
 
-        <a href="#" class="dropdown-item dropdown-footer">See All Orders</a>
+        <a href="/orders_view" class="dropdown-item dropdown-footer">See All Orders</a>
       </div>
     </li>
 
     <!-- Control Sidebar Toggle -->
     <li class="nav-item">
-      <a class="nav-link" data-widget="control-sidebar" data-slide="true" href="#" role="button">
+      <a class="nav-link" data-widget="control-sidebar" data-slide="true" href="javascript:void(0);" role="button">
         <i class="fas fa-th-large"></i>
       </a>
     </li>
