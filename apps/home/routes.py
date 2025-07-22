@@ -92,11 +92,15 @@ def index():
                     'segment': 'index'
                 }
 
-                if user['role'] == 'admin':
-                    return render_template('home/index.html', **context)
-                elif user['role'] == 'user':
-                    return render_template('home/user_index.html', **context)
+                if user['role'] =='manager':
 
+                    return render_template('home/manager_index.html', **context)
+                elif user['role'] in ('waiter','user'):
+                    return render_template('home/user_index.html', **context)
+                elif user['role'] =='admin':
+                    return render_template('home/admin_index.html', **context)
+                elif user['role'] =='super_admin':
+                    return render_template('home/super_admin_index.html', **context)
                 flash('Unauthorized role. Please log in again.', 'error')
                 return redirect(url_for('authentication_blueprint.login'))
 

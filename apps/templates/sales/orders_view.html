@@ -1,7 +1,6 @@
 {% extends "layouts/base.html" %}
 
 {% block title %}Sales Orders{% endblock %}
-
 {% block body_class %}sidebar-mini layout-footer-fixed{% endblock %}
 
 {% block stylesheets %}
@@ -15,7 +14,7 @@
 {% block content %}
 <div class="content-wrapper">
 
-  <!-- Content Header -->
+  <!-- Header -->
   <section class="content-header">
     <div class="container-fluid">
       <div class="row mb-2">
@@ -70,8 +69,9 @@
       <!-- Sales Table -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">Sales List <small class="text-muted">(Pending & Processing)</small></h3>
+          <h3 class="card-title">Sales List <small class="text-muted">(Pending, Processing, Credit)</small></h3>
         </div>
+
         <div class="card-body table-responsive p-0" style="max-height: 600px;">
           <table class="table table-hover table-striped text-nowrap">
             <thead>
@@ -109,21 +109,33 @@
                         <span class="badge badge-success">Complete</span>
                       {% elif sale.order_status == 'canceled' %}
                         <span class="badge badge-danger">Canceled</span>
+                      {% elif sale.order_status == 'credit_sale' %}
+                        <span class="badge badge-secondary">Credit Sale</span>
                       {% else %}
-                        <span class="badge badge-secondary">{{ sale.order_status }}</span>
+                        <span class="badge badge-dark">{{ sale.order_status }}</span>
                       {% endif %}
                     </td>
 
-                    <!-- Action Buttons -->
+                    <!-- Actions -->
                     <td>
-                      {% if session['role'] == 'user' and sale.order_status == 'processing' %}
-                        <form method="POST" action="{{ url_for('sales_blueprint.mark_order_complete') }}">
-                          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                          <input type="hidden" name="salesID" value="{{ sale.salesID }}">
-                          <button type="submit" class="btn btn-success btn-sm">Mark as Complete</button>
-                        </form>
-
+                      {% if session['role'] == 'user' %}
+                        {% if sale.order_status in ['processing', 'edited'] %}
+                          <!-- Mark as Complete -->
+                          <form method="POST" action="{{ url_for('sales_blueprint.mark_order_complete') }}">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="salesID" value="{{ sale.salesID }}">
+                            <button type="submit" class="btn btn-success btn-sm">Mark as Complete</button>
+                          </form>
+                        {% elif sale.order_status == 'credit_sale' %}
+                          <!-- Mark as Received on Credit -->
+                          <form method="POST" action="{{ url_for('sales_blueprint.mark_order_credit') }}">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="salesID" value="{{ sale.salesID }}">
+                            <button type="submit" class="btn btn-warning btn-sm">Mark as Received (Credit)</button>
+                          </form>
+                        {% endif %}
                       {% elif session['role'] == 'admin' %}
+                        <!-- Admin Order Status Update -->
                         <form method="POST" action="{{ url_for('sales_blueprint.update_order_status') }}" class="d-flex">
                           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                           <input type="hidden" name="salesID" value="{{ sale.salesID }}">
@@ -131,6 +143,7 @@
                             <option value="">--Update--</option>
                             <option value="processing" {% if sale.order_status == 'processing' %}selected{% endif %}>Processing</option>
                             <option value="canceled" {% if sale.order_status == 'canceled' %}selected{% endif %}>Canceled</option>
+                            <option value="credit_sale" {% if sale.order_status == 'credit_sale' %}selected{% endif %}>Credit Sale</option>
                           </select>
                           <button type="submit" class="btn btn-info btn-sm">Update</button>
                         </form>
@@ -147,7 +160,7 @@
           </table>
         </div>
 
-        <!-- Totals -->
+        <!-- Footer Totals -->
         <div class="card-footer">
           <div class="row">
             <div class="col-md-6"><strong>Total Quantity:</strong> {{ total_quantity }}</div>

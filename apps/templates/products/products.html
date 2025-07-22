@@ -4,50 +4,48 @@
 {% block body_class %}sidebar-mini{% endblock %}
 
 {% block stylesheets %}
-  <!-- Google Font: Source Sans Pro -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
-  <!-- Font Awesome -->
-  <link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
-  <!-- Ionicons -->
-  <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
-  <!-- AdminLTE Theme -->
-  <link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
-  <!-- DataTables -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.3.0/css/responsive.dataTables.min.css">
+<!-- Google Font: Source Sans Pro -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+<!-- Font Awesome -->
+<link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+<!-- Ionicons -->
+<link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+<!-- AdminLTE Theme -->
+<link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.3.0/css/responsive.dataTables.min.css">
 
-  <style>
-    /* Flash Message Container */
-    .alert-container {
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-      width: 80%;
-      display: none;
-    }
-    .alert {
-      opacity: 1;
-      transition: opacity 1s ease-out;
-      margin-bottom: 10px;
-    }
-    .alert.alert-dismissible {
-      padding-right: 30px;
-    }
-    /* Image Styling */
-    .product-image {
-      width: 100px;
-      height: 100px;
-      object-fit: cover;
-      border-radius: 5px;
-    }
-  </style>
+<style>
+  .alert-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 80%;
+    display: none;
+  }
+  .alert {
+    opacity: 1;
+    transition: opacity 1s ease-out;
+    margin-bottom: 10px;
+  }
+  .alert.alert-dismissible {
+    padding-right: 30px;
+  }
+  .product-image {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 5px;
+  }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="content-wrapper">
-  
+
   <!-- Flash Messages -->
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -107,49 +105,55 @@
             </thead>
             <tbody>
               {% for i in products %}
-                <tr>
-                  <td>{{ i.sku }}</td>
-                  <td>
-                    {{ i.name }}<br>
-                    <small><i>Category:</i> {{ i.category_name }}</small>
-                  </td>
-                  <td>{{ i.reorder_level }}</td>
-                  <td>{{ i.quantity }}</td>
-                  <td>{{ i.formatted_price }}</td>
-                  <td> {% if session['role'] == 'admin' %}{{ i.formatted_total_price }}{% else %}
-                      <span class="text-muted">Admin Only</span>
-                    {% endif %}</td>
-                  <td>
-                    {% if i.image %}
-                      <img src="/static/uploads/{{ i.image }}" alt="Product Image" class="product-image">
-                    {% else %}
-                      <span class="text-muted">No Image</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    {% if session['role'] == 'admin' %}
-                      <a href="/edit_product/{{ i.ProductID }}" class="btn btn-warning btn-sm">Edit</a>
-                    {% else %}
-                      <span class="text-muted">Admin Only</span>
-                    {% endif %}
-                  </td>
-                  <td>
-                    {% if session['role'] == 'admin' %}
-                      <a href="/delete_product/{{ i.ProductID }}" onclick="return confirm('Are you sure you want to delete this product?');" class="btn btn-danger btn-sm">Del</a>
-                    {% else %}
-                      <span class="text-muted">Admin Only</span>
-                    {% endif %}
-                  </td>
-                </tr>
+              <tr>
+                <td>{{ i.sku }}</td>
+                <td>
+                  {{ i.name }}<br>
+                  <small><i>Category:</i> {{ i.category_name }}</small>
+                </td>
+                <td>{{ i.reorder_level }}</td>
+                <td>{{ i.quantity }}</td>
+                <td>{{ i.formatted_price }}</td>
+                <td>
+                  {% if session['role'] in ['admin', 'manager', 'super_admin'] %}
+                    {{ i.formatted_total_price }}
+                  {% else %}
+                    <span class="text-muted">Admin Only</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if i.image %}
+                    <img src="/static/uploads/{{ i.image }}" alt="Product Image" class="product-image">
+                  {% else %}
+                    <span class="text-muted">No Image</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if session['role'] in ['admin', 'manager', 'super_admin'] %}
+                    <a href="/edit_product/{{ i.ProductID }}" class="btn btn-warning btn-sm">Edit</a>
+                  {% else %}
+                    <span class="text-muted">Admin Only</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if session['role'] == 'super_admin' %}
+                    <a href="/delete_product/{{ i.ProductID }}" onclick="return confirm('Are you sure you want to delete this product?');" class="btn btn-danger btn-sm">Del</a>
+                  {% else %}
+                    <span class="text-muted"><small>Supper Admin </small></span>
+                  {% endif %}
+                </td>
+              </tr>
               {% endfor %}
             </tbody>
           </table>
 
-          {% if session['role'] == 'admin' %} <div class="mt-3">
+          {% if session['role'] in ['admin', 'manager', 'super_admin'] %}
+          <div class="mt-3">
             <h4>Total Value of All Products: <strong>{{ formatted_total_sum }}</strong></h4>
-          </div> {% endif %}
-        </div>
+          </div>
+          {% endif %}
 
+        </div>
       </div>
     </div>
   </section>
@@ -157,36 +161,36 @@
 {% endblock %}
 
 {% block javascripts %}
-  <!-- jQuery -->
-  <script src="/static/assets/plugins/jquery/jquery.min.js"></script>
-  <!-- Bootstrap Bundle -->
-  <script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <!-- AdminLTE -->
-  <script src="/static/assets/js/adminlte.min.js"></script>
-  <!-- DataTables -->
-  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/responsive/2.3.0/js/dataTables.responsive.min.js"></script>
+<!-- jQuery -->
+<script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+<!-- Bootstrap Bundle -->
+<script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE -->
+<script src="/static/assets/js/adminlte.min.js"></script>
+<!-- DataTables -->
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.3.0/js/dataTables.responsive.min.js"></script>
 
-  <script>
-    $(document).ready(function() {
-      $('#productTable').DataTable({
-        responsive: true,
-        paging: true,
-        searching: true,
-        ordering: true,
-        stripeClasses: ['odd', 'even'],
-        language: {
-          paginate: {
-            next: 'Next',
-            previous: 'Previous'
-          }
+<script>
+  $(document).ready(function () {
+    $('#productTable').DataTable({
+      responsive: true,
+      paging: true,
+      searching: true,
+      ordering: true,
+      stripeClasses: ['odd', 'even'],
+      language: {
+        paginate: {
+          next: 'Next',
+          previous: 'Previous'
         }
-      });
-
-      // Flash message fade in/out
-      if ($('#flashMessageContainer').length) {
-        $('#flashMessageContainer').fadeIn(500).delay(3500).fadeOut(1000);
       }
     });
-  </script>
+
+    // Flash message fade in/out
+    if ($('#flashMessageContainer').length) {
+      $('#flashMessageContainer').fadeIn(500).delay(3500).fadeOut(1000);
+    }
+  });
+</script>
 {% endblock %}

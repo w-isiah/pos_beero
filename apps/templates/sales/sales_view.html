@@ -8,8 +8,7 @@
   <link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
   <link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.dataTables.min.css">
-
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">
   <style>
     th, td { white-space: nowrap; }
     .dataTables_wrapper { width: 100%; margin: 0 auto; }
@@ -34,14 +33,14 @@
     </div>
   </section>
 
-  <!-- Flash Alerts -->
+  <!-- Alerts -->
   <section class="content">
     <div class="container-fluid">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}
             <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
-              <i class="fas fa-exclamation-circle"></i> {{ message }}
+              <i class="fas fa-info-circle"></i> {{ message }}
               <button type="button" class="close" data-dismiss="alert">&times;</button>
             </div>
           {% endfor %}
@@ -50,103 +49,128 @@
     </div>
   </section>
 
-  <!-- Date Filter Form -->
+  <!-- Filters -->
   <section class="content">
     <div class="container-fluid">
       <form method="POST" class="card card-outline card-primary p-3 mb-4">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <div class="row">
-          {% if session['role'] == 'admin' %}
-          <div class="col-md-5">
-            <label for="start_date">Start Date:</label>
-            <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}">
+          <div class="col-md-3">
+            <label>Start Date</label>
+            <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
           </div>
-          <div class="col-md-5">
-            <label for="end_date">End Date:</label>
-            <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}">
+          <div class="col-md-3">
+            <label>End Date</label>
+            <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
           </div>
-          {% else %}
-          <div class="col-10">
-            <p class="text-muted mt-2">Date filtering is available for admin users only.</p>
+          <div class="col-md-3">
+            <label>Sold By</label>
+            <select name="user_id" class="form-control">
+              <option value="">All Users</option>
+              {% for u in all_users %}
+                <option value="{{ u.id }}" {% if selected_user_id == u.id|string %}selected{% endif %}>{{ u.username }}</option>
+              {% endfor %}
+            </select>
           </div>
-          {% endif %}
-          <div class="col-md-2 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary btn-block">Search</button>
+          <div class="col-md-3">
+            <label>Product</label>
+            <select name="product_id" class="form-control">
+              <option value="">All Products</option>
+              {% for p in all_products %}
+                <option value="{{ p.ProductID }}" {% if selected_product_id == p.ProductID|string %}selected{% endif %}>{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col-12 text-right">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
           </div>
         </div>
       </form>
 
       {% if searched %}
         <!-- Sales Table -->
-        <div class="card card-success mb-4">
-          <div class="card-header">
-            <h3 class="card-title">Sales List</h3>
-          </div>
-          <div class="card-body p-0">
-            {% if sales %}
-              <table id="salesTable" class="display nowrap table table-bordered mb-0" style="width:100%">
-                <thead>
-                  <tr>
-                    <th>Sale ID</th>
-                    <th>Product</th>
-                    <th>Customer</th>
-                    <th>Price</th>
-                    <th>Discount</th>
-                    <th>Discounted</th>
-                    <th>Qty</th>
-                    <th>Date</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for s in sales %}
-                    <tr>
-                      <td>{{ s.salesID }}</td>
-                      <td>{{ s.product_name or 'N/A' }}</td>
-                      <td>{{ s.customer_name or 'Walk-in' }}</td>
-                      <td>
-                        {% if s.price is not none %}
-                          {{ s.price }}
-                        {% else %}
-                          <span class="text-danger">Missing</span>
-                        {% endif %}
-                      </td>
-                      <td>{{ s.discount }}%</td>
-                      <td>{{ s.discounted_price }}</td>
-                      <td>{{ s.qty }}</td>
-                      <td>{{ s.date_updated.strftime('%Y-%m-%d %H:%M') }}</td>
-                      <td>
-                        <a href="/edit_sale/{{ s.salesID }}" class="btn btn-warning btn-sm">Edit</a>
-                        {% if user.role == 'super_admin' %}
-                          <a href="/delete_sale/{{ s.salesID }}" onclick="return confirm('Delete this sale?');" class="btn btn-danger btn-sm">Delete</a>
-                        {% endif %}
-                      </td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            {% else %}
-              <p class="m-3">No sales found for this date range.</p>
-            {% endif %}
-          </div>
-        </div>
+     
+
+     <!-- Sales Table -->
+<div class="card card-success mb-4">
+  <div class="card-header">
+    <h3 class="card-title">Sales</h3>
+  </div>
+  <div class="card-body p-0">
+    {% if sales %}
+      <table id="salesTable" class="table table-bordered table-hover nowrap w-100">
+        <thead class="thead-light">
+          <tr>
+            <th>ID</th>
+            <th>Product</th>
+            <th>Customer</th>
+            <th>Sold By</th>
+            <th>Price</th>
+            <th>Discount</th>
+            <th>Discounted</th>
+            <th>Qty</th>
+            <th>Commission</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sales %}
+            {% set commission = s.qty * 500 %}
+            <tr>
+              <td>{{ s.salesID }}</td>
+              <td>{{ s.product_name }}</td>
+              <td>{{ s.customer_name }}</td>
+              <td>{{ s.sold_by or 'N/A' }}</td>
+              <td>{{ s.price }}</td>
+              <td>{{ s.discount }}%</td>
+              <td>{{ s.discounted_price }}</td>
+              <td>{{ s.qty }}</td>
+              <td>{{ "{:,.0f}".format(commission) }}/=</td>
+              <td>{{ s.date_updated.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td>
+                <a href="/edit_sale/{{ s.salesID }}" class="btn btn-warning btn-sm">Edit</a>
+                {% if user.role == 'super_admin' %}
+                  <a href="/delete_sale/{{ s.salesID }}" onclick="return confirm('Are you sure to delete this sale?');" class="btn btn-danger btn-sm">Delete</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="8" class="text-right">Total Commission:</th>
+            <th class="text-success">{{ total_commission }}/=</th>
+            <th colspan="2"></th>
+          </tr>
+        </tfoot>
+      </table>
+    {% else %}
+      <p class="m-3">No sales found for the selected filters.</p>
+    {% endif %}
+  </div>
+</div>
+
+
 
         <!-- Expenses Table -->
         <div class="card card-danger mb-4">
           <div class="card-header">
-            <h3 class="card-title">Expenses List</h3>
+            <h3 class="card-title">Expenses</h3>
           </div>
           <div class="card-body p-0">
             {% if expenses %}
-              <table id="expensesTable" class="display nowrap table table-bordered mb-0" style="width:100%">
-                <thead>
+              <table id="expensesTable" class="table table-bordered table-hover nowrap w-100">
+                <thead class="thead-light">
                   <tr>
                     <th>Person</th>
                     <th>Expense</th>
                     <th>Description</th>
                     <th>Amount</th>
                     <th>Date</th>
-                    <th>Action</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -168,12 +192,12 @@
                 </tbody>
               </table>
             {% else %}
-              <p class="m-3">No expenses found for this date range.</p>
+              <p class="p-3">No expenses found for the selected filters.</p>
             {% endif %}
           </div>
         </div>
 
-        <!-- Summary Card -->
+        <!-- Summary -->
         <div class="card card-outline card-info mb-5">
           <div class="card-body row text-center">
             <div class="col-md-4">
@@ -201,22 +225,18 @@
   <script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="/static/assets/js/adminlte.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
+  <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
 
   <script>
     $(function () {
       $('#salesTable, #expensesTable').DataTable({
+        responsive: true,
         scrollX: true,
-        scrollCollapse: true,
         paging: true,
-        fixedColumns: {
-          leftColumns: 1,
-          rightColumns: 1
-        },
         language: {
           paginate: {
-            next: "Next",
-            previous: "Previous"
+            next: 'Next',
+            previous: 'Previous'
           }
         }
       });

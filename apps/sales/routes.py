@@ -82,7 +82,6 @@ def save_sale():
         total_price = data.get('total_price')
         discounted_price = data.get('discounted_price')
 
-        # Validation
         if not customer_id or not isinstance(items, list) or not items:
             return jsonify({'message': 'Missing customer ID or cart items.'}), 400
 
@@ -93,16 +92,16 @@ def save_sale():
         cursor = connection.cursor(dictionary=True)
         connection.start_transaction()
 
-        # Insert sales summary
+        # Insert into sales_summary
         cursor.execute("""
             INSERT INTO sales_summary (
                 customer_id, total_price, discounted_price, order_status, user_id, created_at
             )
             VALUES (%s, %s, %s, %s, %s, %s)
         """, (customer_id, total_price, discounted_price, order_status, user_id, log_time))
-        sale_id = cursor.lastrowid
+        sale_summary_id = cursor.lastrowid
 
-        # Insert each item
+        # Loop through each cart item
         for item in items:
             try:
                 product_id = int(item.get('product_id'))
@@ -112,12 +111,20 @@ def save_sale():
                 total_item_price = float(item.get('total_price', price * quantity))
                 discounted_item_price = float(item.get('discounted_price', total_item_price - discount))
             except (TypeError, ValueError) as e:
-                return jsonify({'message': f'Invalid or missing item data for product {item.get("product_id")}: {e}'}), 400
+                return jsonify({'message': f'Invalid data for product {item.get("product_id")}: {e}'}), 400
 
             if quantity <= 0:
                 return jsonify({'message': f'Quantity must be greater than 0 for product ID {product_id}'}), 400
 
-            # Insert item into sales table
+            # Get current product price (old_price)
+            cursor.execute("SELECT price FROM product_list WHERE ProductID = %s", (product_id,))
+            product = cursor.fetchone()
+            if not product:
+                return jsonify({'message': f'Product ID {product_id} not found.'}), 400
+
+            old_price = product['price']
+
+            # Insert into sales table
             cursor.execute("""
                 INSERT INTO sales (
                     ProductID, customer_id, price, discount, qty, total_price,
@@ -130,16 +137,29 @@ def save_sale():
                 'sales', user_id, order_status
             ))
 
-            # Update stock and log only for staff
-            if user_role != 'user':
-                cursor.execute("""
-                    UPDATE product_list SET quantity = quantity - %s WHERE ProductID = %s
-                """, (quantity, product_id))
+            # Update stock
+            cursor.execute("""
+                UPDATE product_list SET quantity = quantity - %s WHERE ProductID = %s
+            """, (quantity, product_id))
 
-                cursor.execute("""
-                    INSERT INTO inventory_logs (product_id, quantity_change, reason, log_date, user_id)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (product_id, -quantity, 'sale', log_time, user_id))
+            # Insert detailed inventory log
+            cursor.execute("""
+                INSERT INTO inventory_logs (
+                    product_id, quantity_change, log_date, reason,
+                    order_status, price_change, user_id, sales_user_id, old_price
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                product_id,
+                -quantity,
+                log_time,
+                'New sale',
+                order_status,
+                price,
+                user_id,         # who is logged in now
+                user_id,         # who made the sale
+                old_price
+            ))
 
         connection.commit()
         return jsonify({'message': 'Sale submitted successfully!'}), 201
@@ -163,6 +183,7 @@ def save_sale():
 
 
 
+
 @blueprint.route('/sales_view', methods=['GET', 'POST'])
 def sales_view():
     if 'id' not in session:
@@ -173,25 +194,30 @@ def sales_view():
     cursor = connection.cursor(dictionary=True)
 
     try:
-        # Fetch user info
+        # Fetch current user info
         cursor.execute("SELECT * FROM users WHERE id = %s", (session['id'],))
         user = cursor.fetchone()
-        if not user:
-            flash('User not found. Please log in again.', 'error')
-            return redirect(url_for('authentication_blueprint.login'))
 
-        # Handle date input
+        # Fetch all users for filter dropdown
+        cursor.execute("SELECT id, username FROM users")
+        all_users = cursor.fetchall()
+
+        # Fetch all products for filter dropdown
+        cursor.execute("SELECT ProductID, name FROM product_list")
+        all_products = cursor.fetchall()
+
         today = datetime.today().strftime('%Y-%m-%d')
+        start_date = end_date = today
+        selected_user_id = selected_product_id = None
+
         if request.method == 'POST':
             start_date = request.form.get('start_date') or today
             end_date = request.form.get('end_date') or today
-        else:
-            start_date = end_date = today
+            selected_user_id = request.form.get('user_id') or None
+            selected_product_id = request.form.get('product_id') or None
 
-        searched = True  # Always display data (even without filters)
-
-        # === Fetch Sales ===
-        cursor.execute("""
+        # === SALES QUERY ===
+        sales_query = """
             SELECT 
                 s.salesID,
                 p.name AS product_name,
@@ -201,82 +227,71 @@ def sales_view():
                 s.discounted_price,
                 s.qty,
                 s.total_price,
-                s.date_updated
+                s.date_updated,
+                u.username AS sold_by
             FROM sales s
             JOIN product_list p ON s.ProductID = p.ProductID
             JOIN customer_list c ON s.customer_id = c.CustomerID
+            LEFT JOIN users u ON s.user_id = u.id
             WHERE s.type = 'sales' 
               AND s.order_status = 'Completed'
               AND DATE(s.date_updated) BETWEEN %s AND %s
-            ORDER BY s.date_updated DESC
-        """, (start_date, end_date))
+        """
+        query_params = [start_date, end_date]
+
+        if selected_user_id:
+            sales_query += " AND s.user_id = %s"
+            query_params.append(selected_user_id)
+
+        if selected_product_id:
+            sales_query += " AND s.ProductID = %s"
+            query_params.append(selected_product_id)
+
+        sales_query += " ORDER BY s.date_updated DESC"
+        cursor.execute(sales_query, tuple(query_params))
         sales = cursor.fetchall()
 
-        # === Sales Totals ===
-        cursor.execute("""
-            SELECT 
-                SUM(s.qty) AS total_quantity,
-                SUM(s.total_price) AS total_sales
-            FROM sales s
-            WHERE s.type = 'sales' 
-              AND s.order_status = 'Completed'
-              AND DATE(s.date_updated) BETWEEN %s AND %s
-        """, (start_date, end_date))
-        totals = cursor.fetchone()
-        total_sales = totals['total_sales'] or 0
-        total_quantity = totals['total_quantity'] or 0
-
-        # === Fetch Expenses ===
-        cursor.execute("""
-            SELECT 
-                s.salesID,
-                s.ProductID AS expense_code,
-                s.expense_name,
-                c.name AS customer_name,
-                s.price AS amount,
-                s.description,
-                s.date_updated
-            FROM sales s
-            JOIN customer_list c ON s.customer_id = c.CustomerID
-            WHERE s.type = 'expense' 
-              AND DATE(s.date_updated) BETWEEN %s AND %s
-            ORDER BY s.date_updated DESC
-        """, (start_date, end_date))
-        expenses = cursor.fetchall()
-
-        # === Expense Totals ===
-        cursor.execute("""
-            SELECT SUM(s.total_price) AS total_expenses
-            FROM sales s
-            WHERE s.type = 'expense' 
-              AND DATE(s.date_updated) BETWEEN %s AND %s
-        """, (start_date, end_date))
-        expense_total = cursor.fetchone()
-        total_expenses = expense_total['total_expenses'] or 0
+        # Totals
+        total_quantity = sum(s['qty'] for s in sales)
+        total_sales = sum(s['total_price'] for s in sales)
+        total_commission = sum(s['qty'] * 500 for s in sales)
 
     finally:
         cursor.close()
         connection.close()
 
-    # Format numbers for display
-    formatted_total_sales = f"{total_sales:,.2f}"
-    formatted_total_expenses = f"{total_expenses:,.2f}"
-    formatted_total_quantity = f"{total_quantity:,}"
-
     return render_template(
         'sales/sales_view.html',
         user=user,
         sales=sales,
-        expenses=expenses,
-        total_sales=formatted_total_sales,
-        total_expenses=formatted_total_expenses,
-        total_quantity=formatted_total_quantity,
+        total_quantity=total_quantity,
+        total_sales=f"{total_sales:,.0f}",
+        total_commission=f"{total_commission:,.0f}",
         start_date=start_date,
         end_date=end_date,
-        searched=searched,
+        all_users=all_users,
+        all_products=all_products,
+        selected_user_id=selected_user_id,
+        selected_product_id=selected_product_id,
+        searched=True,
         segment='sales_view'
     )
 
+
+
+
+
+
+
+
+
+
+
+
+
+def get_kampala_time():
+    kampala = pytz.timezone("Africa/Kampala")
+    return datetime.now(kampala)
 
 
 
@@ -290,20 +305,157 @@ def mark_order_complete():
 
     sales_id = request.form.get('salesID')
     connection = get_db_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
+
     try:
-        cursor.execute("SELECT order_status FROM sales WHERE salesID = %s", (sales_id,))
-        order = cursor.fetchone()
-        if order and order[0] == 'processing':
-            cursor.execute("UPDATE sales SET order_status = 'completed' WHERE salesID = %s", (sales_id,))
-            connection.commit()
-            flash('Order marked as complete.', 'success')
-        else:
+        # Step 1: Fetch sales and product data
+        cursor.execute("""
+            SELECT s.salesID, s.ProductID, s.qty, s.order_status, s.price, s.user_id,
+                   p.quantity AS current_stock, p.price AS old_price, p.ProductID AS product_id
+            FROM sales s
+            JOIN product_list p ON s.ProductID = p.ProductID
+            WHERE s.salesID = %s
+        """, (sales_id,))
+        sale = cursor.fetchone()
+
+        if not sale:
+            flash('Sale not found.', 'danger')
+            return redirect(url_for('sales_blueprint.orders_view'))
+
+        if sale['order_status'].lower() != 'processing':
             flash('Only processing orders can be marked as complete.', 'warning')
+            return redirect(url_for('sales_blueprint.orders_view'))
+
+        qty_sold = sale['qty']
+        current_stock = sale['current_stock']
+        new_stock = current_stock - qty_sold
+
+        #if new_stock < 0:
+        #    flash('Insufficient stock to complete order.', 'danger')
+        #    return redirect(url_for('sales_blueprint.orders_view'))
+
+        # Step 2: Update order status
+        cursor.execute("""
+            UPDATE sales SET order_status = 'completed'
+            WHERE salesID = %s
+        """, (sales_id,))
+
+        # Step 3: Update product quantity
+        cursor.execute("""
+            UPDATE product_list SET quantity = %s
+            WHERE ProductID = %s
+        """, (new_stock, sale['ProductID']))
+
+        # Step 4: Insert into inventory_logs (with order_status logged)
+        cursor.execute("""
+            INSERT INTO inventory_logs (
+                product_id, quantity_change, log_date, reason, order_status,
+                price_change, user_id, old_price
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            sale['product_id'],
+            -qty_sold,
+            get_kampala_time(),
+            'Order completed',
+            'completed',
+            sale['price'],
+            session['id'],
+            sale['old_price']
+        ))
+
+        # Step 5: Commit transaction
+        connection.commit()
+        flash('Order marked as complete and inventory updated.', 'success')
+
+    except Exception as e:
+        connection.rollback()
+        flash(f'Error completing order: {str(e)}', 'danger')
+
     finally:
         cursor.close()
         connection.close()
+
     return redirect(url_for('sales_blueprint.orders_view'))
+
+
+
+
+@blueprint.route('/mark_order_credit', methods=['POST'])
+def mark_order_credit():
+    if 'id' not in session or session.get('role') != 'user':
+        flash('Unauthorized', 'danger')
+        return redirect(url_for('authentication_blueprint.login'))
+
+    sales_id = request.form.get('salesID')
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        # Step 1: Fetch sale
+        cursor.execute("""
+            SELECT s.salesID, s.ProductID, s.qty, s.order_status, s.price, s.user_id,
+                   p.quantity AS current_stock, p.price AS old_price
+            FROM sales s
+            JOIN product_list p ON s.ProductID = p.ProductID
+            WHERE s.salesID = %s
+        """, (sales_id,))
+        sale = cursor.fetchone()
+
+        if not sale:
+            flash('Sale not found.', 'danger')
+            return redirect(url_for('sales_blueprint.orders_view'))
+
+        if sale['order_status'].lower() != 'credit_sale':
+            flash('Only credit sale orders can be marked as received.', 'warning')
+            return redirect(url_for('sales_blueprint.orders_view'))
+
+        qty_sold = sale['qty']
+        current_stock = sale['current_stock']
+        new_stock = current_stock - qty_sold
+
+        # Step 2: Update order status to 'recieved_on_credit'
+        cursor.execute("""
+            UPDATE sales SET order_status = 'recieved_on_credit'
+            WHERE salesID = %s
+        """, (sales_id,))
+
+        # Step 3: Update product quantity
+        cursor.execute("""
+            UPDATE product_list SET quantity = %s
+            WHERE ProductID = %s
+        """, (new_stock, sale['ProductID']))
+
+        # Step 4: Log inventory
+        cursor.execute("""
+            INSERT INTO inventory_logs (
+                product_id, quantity_change, log_date, reason, order_status,
+                price_change, user_id, old_price
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            sale['ProductID'],
+            -qty_sold,
+            get_kampala_time(),
+            'Received on credit',
+            'completed',
+            sale['price'],
+            session['id'],
+            sale['old_price']
+        ))
+
+        connection.commit()
+        flash('Order received on credit and inventory updated.', 'success')
+
+    except Exception as e:
+        connection.rollback()
+        flash(f'Error: {str(e)}', 'danger')
+    finally:
+        cursor.close()
+        connection.close()
+
+    return redirect(url_for('sales_blueprint.orders_view'))
+
+
+
 
 
 
@@ -319,50 +471,108 @@ def update_order_status():
     sales_id = request.form.get('salesID')
     new_status = request.form.get('order_status')
 
-    if new_status not in ['processing', 'canceled']:
+    allowed_statuses = ['processing', 'canceled','credit_sale']
+    if new_status not in allowed_statuses:
         flash('Invalid status.', 'warning')
         return redirect(url_for('sales_blueprint.orders_view'))
 
     connection = get_db_connection()
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
 
     try:
-        # Get current order details: qty and ProductID
-        cursor.execute("SELECT qty, ProductID, order_status FROM sales WHERE salesID = %s", (sales_id,))
+        # Fetch sale details
+        cursor.execute("""
+            SELECT s.qty, s.ProductID, s.price, s.order_status, s.user_id AS sales_user_id,
+                   p.price AS old_price, p.quantity AS current_stock
+            FROM sales s
+            JOIN product_list p ON s.ProductID = p.ProductID
+            WHERE s.salesID = %s
+        """, (sales_id,))
         sale = cursor.fetchone()
 
         if not sale:
             flash('Sale record not found.', 'danger')
             return redirect(url_for('sales_blueprint.orders_view'))
 
-        current_qty, product_id, current_status = sale
+        current_qty = sale['qty']
+        product_id = sale['ProductID']
+        current_status = sale['order_status']
+        current_stock = sale['current_stock']
+        inventory_change = 0
+        reason = ''
 
-        # Only add quantity back if changing from not canceled to canceled
+        # === Inventory adjustments based on new status ===
         if new_status == 'canceled' and current_status != 'canceled':
-            # Update product quantity by adding back the sale quantity
-            cursor.execute(
-                "UPDATE product_list SET quantity = quantity + %s WHERE ProductID = %s",
-                (current_qty, product_id)
-            )
+            inventory_change = current_qty
+            reason = 'Order canceled - stock returned'
 
-        # Update order status
-        cursor.execute(
-            "UPDATE sales SET order_status = %s WHERE salesID = %s",
-            (new_status, sales_id)
-        )
+            cursor.execute("""
+                UPDATE product_list SET quantity = quantity + %s WHERE ProductID = %s
+            """, (current_qty, product_id))
+
+        elif new_status == 'processing' and current_status == 'canceled':
+            if current_stock < current_qty:
+                flash('Insufficient stock to revert order to processing.', 'danger')
+                return redirect(url_for('sales_blueprint.orders_view'))
+
+            inventory_change = -current_qty
+            reason = 'Order reverted to processing - stock deducted'
+
+            cursor.execute("""
+                UPDATE product_list SET quantity = quantity - %s WHERE ProductID = %s
+            """, (current_qty, product_id))
+        
+        else:
+            reason = f'Order status changed from {current_status} to {new_status} - no stock change'
+
+        # === Update order status ===
+        cursor.execute("""
+            UPDATE sales SET order_status = %s WHERE salesID = %s
+        """, (new_status, sales_id))
+
+        # === Log inventory movement ===
+        cursor.execute("""
+            INSERT INTO inventory_logs (
+                product_id, quantity_change, log_date, reason, order_status,
+                price_change, user_id, sales_user_id, old_price
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            product_id,
+            inventory_change,
+            get_kampala_time(),
+            reason,
+            new_status,
+            sale['price'],
+            session['id'],             # Logged-in admin
+            sale['sales_user_id'],     # Original sales user
+            sale['old_price']
+        ))
 
         connection.commit()
-        flash('Order status updated.', 'success')
+        flash('Order status updated and inventory log recorded.', 'success')
 
     except Exception as e:
         connection.rollback()
-        flash(f'Error updating order status: {e}', 'danger')
+        flash(f'Error updating order status: {str(e)}', 'danger')
 
     finally:
         cursor.close()
         connection.close()
 
     return redirect(url_for('sales_blueprint.orders_view'))
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -407,7 +617,7 @@ def orders_view():
             JOIN product_list p ON s.ProductID = p.ProductID
             JOIN customer_list c ON s.customer_id = c.CustomerID
             WHERE s.type = 'sales'
-              AND s.order_status IN ('pending', 'processing')
+              AND s.order_status IN ('pending', 'processing','edited','credit_sale','recieved_on_credit')
               AND DATE(s.date_updated) BETWEEN %s AND %s
             ORDER BY s.date_updated DESC
         """, (start_date, end_date))
@@ -420,7 +630,7 @@ def orders_view():
                 SUM(s.total_price) AS total_sales
             FROM sales s
             WHERE s.type = 'sales'
-              AND s.order_status IN ('pending', 'processing')
+              AND s.order_status IN ('pending', 'processing','edited','credit_sale','recieved_on_credit')
               AND DATE(s.date_updated) BETWEEN %s AND %s
         """, (start_date, end_date))
         totals = cursor.fetchone()
@@ -461,6 +671,9 @@ def get_kampala_time(as_string: bool = False, fmt: str = "%Y-%m-%d %H:%M:%S") ->
     kampala_time = datetime.now(kampala_tz)
     return kampala_time.strftime(fmt) if as_string else kampala_time
 
+
+
+
 @blueprint.route('/edit_sale/<int:salesID>', methods=['GET', 'POST'])
 def edit_sale(salesID):
     connection = get_db_connection()
@@ -475,60 +688,98 @@ def edit_sale(salesID):
             flash("Sale record not found!", "warning")
             return redirect(url_for('sales_blueprint.sales_view'))
 
-        # Get customers list
+        product_id = sale['ProductID']
+        old_qty = sale['qty']
+        old_status = sale['order_status']
+
+        # Fetch available stock for the product
+        cursor.execute('SELECT quantity FROM product_list WHERE ProductID = %s', (product_id,))
+        product = cursor.fetchone()
+        if not product:
+            flash("Product not found!", "danger")
+            return redirect(url_for('sales_blueprint.sales_view'))
+
+        available_stock = product['quantity']
+
+        # Get customers for dropdown
         cursor.execute('SELECT CustomerID, name FROM customer_list')
         customers = cursor.fetchall()
 
         if request.method == 'POST':
-            # Get form data
+            # Get submitted form data
             customer_id = request.form.get('customer_id')
-            price = request.form.get('price')
-            discount = request.form.get('discount') or 0
-            qty = request.form.get('qty')
+            price = float(request.form.get('price'))
+            discount = float(request.form.get('discount') or 0)
+            new_qty = int(request.form.get('qty'))
+            new_status = 'edited'
             date_updated_str = request.form.get('date_updated')
 
-            # Validate and parse date_updated
+            # Check if order status is valid
+            #allowed_statuses = ['pending', 'processing', 'completed', 'canceled']
+            #if new_status not in allowed_statuses:
+            #    flash("Invalid order status.", "danger")
+            #    return redirect(request.url)
+
+            # Compute quantity difference
+            qty_difference = new_qty - old_qty  # Positive = needs more stock
+
+            if qty_difference > 0 and qty_difference > available_stock:
+                flash(f"Not enough stock. Available: {available_stock}, Needed: {qty_difference}.", "danger")
+                return redirect(request.url)
+
+            # Parse and format the datetime string
             try:
-                # Convert string to datetime object (local time)
-                date_updated = datetime.strptime(date_updated_str, '%Y-%m-%dT%H:%M')
-                # Convert to Kampala timezone aware datetime
+                local_dt = datetime.strptime(date_updated_str, '%Y-%m-%dT%H:%M')
                 kampala_tz = pytz.timezone("Africa/Kampala")
-                date_updated = kampala_tz.localize(date_updated)
-                # Format for SQL
-                date_updated_formatted = date_updated.strftime("%Y-%m-%d %H:%M:%S")
+                localized_dt = kampala_tz.localize(local_dt)
+                date_updated_formatted = localized_dt.strftime("%Y-%m-%d %H:%M:%S")
             except Exception:
                 flash("Invalid date format.", "danger")
                 return redirect(request.url)
 
-            # Update the sale record
-            update_query = '''
+            # Perform update
+            cursor.execute("""
                 UPDATE sales 
                 SET customer_id = %s,
                     price = %s,
                     discount = %s,
                     qty = %s,
-                    date_updated = %s
+                    date_updated = %s,
+                    order_status = %s
                 WHERE salesID = %s
-            '''
-            cursor.execute(update_query, (
+            """, (
                 customer_id,
                 price,
                 discount,
-                qty,
+                new_qty,
                 date_updated_formatted,
+                new_status,
                 salesID
             ))
-            connection.commit()
 
+            connection.commit()
             flash("Sale updated successfully!", "success")
             return redirect(url_for('sales_blueprint.sales_view'))
 
-        # GET request — render template with sale and customers
+        # GET: Show edit form
         return render_template('sales/edit_sale.html', sale=sale, customers=customers)
 
     finally:
         cursor.close()
         connection.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
