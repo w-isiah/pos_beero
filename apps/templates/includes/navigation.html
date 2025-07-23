@@ -1,18 +1,17 @@
 <style>
-  /* Custom dropdown menu sizing and wrapping */
+  /* Notification Dropdown Styling */
   .custom-dropdown-menu {
     min-width: 350px;
     max-width: 450px;
-    white-space: normal; /* allow multiline wrapping */
+    white-space: normal;
   }
 
   .custom-dropdown-menu .dropdown-item {
-    white-space: normal !important; /* override nowrap */
+    white-space: normal !important;
     padding: 8px 12px;
     font-size: 0.9rem;
   }
 
-  /* Optional: Adjust badge small size */
   .badge-sm {
     font-size: 0.75em;
     padding: 0.25em 0.4em;
@@ -21,30 +20,26 @@
 
 <!-- Navbar -->
 <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-  <!-- Left navbar links -->
+  <!-- Left Links -->
   <ul class="navbar-nav">
-    <!-- Menu Toggle -->
     <li class="nav-item">
-      <a class="nav-link text-secondary" data-widget="pushmenu" href="javascript:void(0);" role="button">
+      <a class="nav-link text-secondary" data-widget="pushmenu" href="#" role="button">
         <i class="fas fa-bars"></i>
       </a>
     </li>
 
-    <!-- Home Link -->
     <li class="nav-item d-none d-sm-inline-block">
-      <a href="/index" class="nav-link text-primary">
+      <a href="{{ url_for('home_blueprint.index') }}" class="nav-link text-primary">
         <i class="fas fa-home me-1"></i> Home
       </a>
     </li>
 
-    <!-- User Profile Link -->
     <li class="nav-item d-none d-sm-inline-block">
       <a href="{{ url_for('authentication_blueprint.edit_user_profile', id=session['id']) }}" class="nav-link text-primary">
         <i class="fas fa-user me-1"></i> User Profile
       </a>
     </li>
 
-    <!-- Role Display -->
     <li class="nav-item d-none d-sm-inline-block">
       <a href="javascript:void(0);" class="nav-link text-primary">
         <i class="fas fa-user-tag me-1"></i> Role: {{ session['role'] }}
@@ -52,51 +47,54 @@
     </li>
   </ul>
 
-  <!-- Right navbar links -->
+  <!-- Right Links -->
   <ul class="navbar-nav ml-auto">
-    <!-- Notifications Dropdown -->
+    <!-- Notifications -->
     <li class="nav-item dropdown">
-      <a class="nav-link" data-toggle="dropdown" href="javascript:void(0);" aria-haspopup="true" aria-expanded="false" role="button">
+      <a class="nav-link" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
         <i class="far fa-bell"></i>
         <span class="badge badge-warning navbar-badge">{{ notifications|length }}</span>
       </a>
+
       <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right custom-dropdown-menu">
         <span class="dropdown-item dropdown-header">{{ notifications|length }} Pending Orders</span>
         <div class="dropdown-divider"></div>
 
         {% if notifications %}
-          {% for notification in notifications %}
-            <a href="/orders_view" class="dropdown-item d-flex align-items-center justify-content-between" title="{{ notification.text }}">
+          {% for n in notifications %}
+            {% set order_id = n.text.split('#')[1].split(' ')[0] %}
+            {% set status = n.text.split('(')[1].split(')')[0] %}
+            {% set quantity = n.text.split('-')[1].strip().split(' ')[0] %}
+            <a href="{{ url_for('home_blueprint.route_template', template='orders_view') }}" class="dropdown-item d-flex justify-content-between align-items-center" title="{{ n.text }}">
               <div>
-                <i class="{{ notification.icon }} mr-2 text-primary"></i>
-                <strong>Order #{{ notification.text.split(' ')[1] }}</strong>
+                <i class="{{ n.icon }} text-primary mr-2"></i>
+                <strong>Order #{{ order_id }}</strong>
                 <span class="badge badge-sm
-                  {% if 'Pending' in notification.text %}badge-warning
-                  {% elif 'Processing' in notification.text %}badge-info
+                  {% if 'Pending' in status %}badge-warning
+                  {% elif 'Processing' in status %}badge-info
                   {% else %}badge-secondary{% endif %} ml-2">
-                  {{ notification.text.split('(')[1].split(')')[0] }}
+                  {{ status }}
                 </span>
-                <span class="ml-2">Qty: {{ notification.text.split('-')[1].strip().split(' ')[0] }}</span>
+                <span class="ml-2">Qty: {{ quantity }}</span>
               </div>
-              <small class="text-muted ml-3">{{ notification.time }}</small>
+              <small class="text-muted ml-3">{{ n.time }}</small>
             </a>
             <div class="dropdown-divider"></div>
           {% endfor %}
         {% else %}
-          <a href="javascript:void(0);" class="dropdown-item text-center text-muted">No pending or processing orders</a>
+          <span class="dropdown-item text-center text-muted">No pending or processing orders</span>
           <div class="dropdown-divider"></div>
         {% endif %}
 
-        <a href="/orders_view" class="dropdown-item dropdown-footer">See All Orders</a>
+        <a href="{{ url_for('home_blueprint.route_template', template='orders_view') }}" class="dropdown-item dropdown-footer">See All Orders</a>
       </div>
     </li>
 
-    <!-- Control Sidebar Toggle -->
+    <!-- Control Sidebar -->
     <li class="nav-item">
-      <a class="nav-link" data-widget="control-sidebar" data-slide="true" href="javascript:void(0);" role="button">
+      <a class="nav-link" data-widget="control-sidebar" data-slide="true" href="#" role="button">
         <i class="fas fa-th-large"></i>
       </a>
     </li>
   </ul>
 </nav>
-<!-- /.navbar -->

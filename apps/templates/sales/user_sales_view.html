@@ -1,0 +1,180 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}My Sales Report{% endblock %}
+{% block body_class %}sidebar-mini layout-fixed{% endblock %}
+
+{% block stylesheets %}
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700&display=fallback">
+  <link rel="stylesheet" href="/static/assets/plugins/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="/static/assets/css/adminlte.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">
+  <style>
+    th, td { white-space: nowrap; }
+    .dataTables_wrapper { width: 100%; margin: 0 auto; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+
+  <!-- Page Header -->
+  <section class="content-header">
+    <div class="container-fluid">
+      <div class="row mb-2">
+        <div class="col-sm-6"><h1>My Sales Report</h1></div>
+        <div class="col-sm-6">
+          <ol class="breadcrumb float-sm-right">
+            <li class="breadcrumb-item"><a href="/index">Home</a></li>
+            <li class="breadcrumb-item active">Reports</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Alerts -->
+  <section class="content">
+    <div class="container-fluid">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+              <i class="fas fa-info-circle"></i> {{ message }}
+              <button type="button" class="close" data-dismiss="alert">&times;</button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+  </section>
+
+  <!-- Filters -->
+  <section class="content">
+    <div class="container-fluid">
+      <form method="POST" class="card card-outline card-primary p-3 mb-4">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <div class="row">
+          <div class="col-md-3">
+            <label>Start Date</label>
+            <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+          </div>
+          <div class="col-md-3">
+            <label>End Date</label>
+            <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+          </div>
+          <div class="col-md-3">
+            <label>Product</label>
+            <select name="product_id" class="form-control">
+              <option value="">All Products</option>
+              {% for p in all_products %}
+                <option value="{{ p.ProductID }}" {% if selected_product_id == p.ProductID|string %}selected{% endif %}>{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="row mt-3">
+          <div class="col-12 text-right">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+          </div>
+        </div>
+      </form>
+
+      {% if searched %}
+        <!-- Sales Table -->
+        <div class="card card-success mb-4">
+          <div class="card-header">
+            <h3 class="card-title">Sales</h3>
+          </div>
+          <div class="card-body p-0">
+            {% if sales %}
+              <table id="salesTable" class="table table-bordered table-hover nowrap w-100">
+                <thead class="thead-light">
+                  <tr>
+                    <th>ID</th>
+                    <th>Product</th>
+                    <th>Customer</th>
+                    <th>Sold By</th>
+                    <th>Price</th>
+                    <th>Discount</th>
+                    <th>Discounted</th>
+                    <th>Qty</th>
+                    <th>Commission</th>
+                    <th>Date</th>
+                  
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for s in sales %}
+                    {% set commission = s.qty * 500 %}
+                    <tr>
+                      <td>{{ s.salesID }}</td>
+                      <td>{{ s.product_name }}</td>
+                      <td>{{ s.customer_name }}</td>
+                      <td>{{ s.sold_by or 'N/A' }}</td>
+                      <td>{{ s.price }}</td>
+                      <td>{{ s.discount }}%</td>
+                      <td>{{ s.discounted_price }}</td>
+                      <td>{{ s.qty }}</td>
+                      <td>{{ "{:,.0f}".format(commission) }}/=</td>
+                      <td>{{ s.date_updated.strftime('%Y-%m-%d %H:%M') }}</td>
+                     
+                    </tr>
+                  {% endfor %}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th colspan="8" class="text-right">Total Commission:</th>
+                    <th class="text-success">{{ total_commission }}/=</th>
+                    <th colspan="2"></th>
+                  </tr>
+                </tfoot>
+              </table>
+            {% else %}
+              <p class="m-3">No sales found for the selected filters.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="card card-outline card-info mb-5">
+          <div class="card-body row text-center">
+            <div class="col-md-6">
+              <h5>Total Sales</h5>
+              <p class="text-success font-weight-bold">{{ total_sales or 0 }}/=</p>
+            </div>
+            <div class="col-md-6">
+              <h5>Total Quantity Sold</h5>
+              <p class="text-primary font-weight-bold">{{ total_quantity or 0 }} Items</p>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+  <script src="/static/assets/plugins/jquery/jquery.min.js"></script>
+  <script src="/static/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/assets/js/adminlte.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+
+  <script>
+    $(function () {
+      $('#salesTable').DataTable({
+        responsive: true,
+        scrollX: true,
+        paging: true,
+        language: {
+          paginate: {
+            next: 'Next',
+            previous: 'Previous'
+          }
+        }
+      });
+    });
+  </script>
+{% endblock %}

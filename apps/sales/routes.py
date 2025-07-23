@@ -71,7 +71,7 @@ def save_sale():
 
         user_id = session['id']
         user_role = session.get('role', 'user')
-        order_status = 'pending' if user_role == 'user' else 'completed'
+        order_status = 'completed' if user_role not in ('user', 'waiter') else 'pending'
         log_time = get_kampala_time()
 
         data = request.get_json()
@@ -286,6 +286,94 @@ def sales_view():
 
 
 
+@blueprint.route('/user_sales_view', methods=['GET', 'POST'])
+def user_sales_view():
+    if 'id' not in session:
+        flash('Login required to access this page.', 'error')
+        return redirect(url_for('authentication_blueprint.login'))
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        # Fetch current user info
+        cursor.execute("SELECT * FROM users WHERE id = %s", (session['id'],))
+        user = cursor.fetchone()
+
+        # Fetch all products for filter dropdown
+        cursor.execute("SELECT ProductID, name FROM product_list")
+        all_products = cursor.fetchall()
+
+        today = datetime.today().strftime('%Y-%m-%d')
+        start_date = end_date = today
+        selected_product_id = None
+
+        if request.method == 'POST':
+            start_date = request.form.get('start_date') or today
+            end_date = request.form.get('end_date') or today
+            selected_product_id = request.form.get('product_id') or None
+
+        # === SALES QUERY ===
+        sales_query = """
+            SELECT 
+                s.salesID,
+                p.name AS product_name,
+                c.name AS customer_name,
+                s.price,
+                s.discount,
+                s.discounted_price,
+                s.qty,
+                s.total_price,
+                s.date_updated,
+                u.username AS sold_by
+            FROM sales s
+            JOIN product_list p ON s.ProductID = p.ProductID
+            JOIN customer_list c ON s.customer_id = c.CustomerID
+            LEFT JOIN users u ON s.user_id = u.id
+            WHERE s.type = 'sales' 
+              AND s.order_status = 'Completed'
+              AND s.user_id = %s
+              AND DATE(s.date_updated) BETWEEN %s AND %s
+        """
+        query_params = [session['id'], start_date, end_date]
+
+        if selected_product_id:
+            sales_query += " AND s.ProductID = %s"
+            query_params.append(selected_product_id)
+
+        sales_query += " ORDER BY s.date_updated DESC"
+        cursor.execute(sales_query, tuple(query_params))
+        sales = cursor.fetchall()
+
+        # Totals
+        total_quantity = sum(s['qty'] for s in sales)
+        total_sales = sum(s['total_price'] for s in sales)
+        total_commission = sum(s['qty'] * 500 for s in sales)
+
+    finally:
+        cursor.close()
+        connection.close()
+
+    return render_template(
+        'sales/user_sales_view.html',
+        user=user,
+        sales=sales,
+        total_quantity=total_quantity,
+        total_sales=f"{total_sales:,.0f}",
+        total_commission=f"{total_commission:,.0f}",
+        start_date=start_date,
+        end_date=end_date,
+        all_products=all_products,
+        selected_product_id=selected_product_id,
+        searched=True,
+        segment='user_sales_view'
+    )
+
+
+
+
+
+
 
 
 
@@ -322,7 +410,7 @@ def mark_order_complete():
             flash('Sale not found.', 'danger')
             return redirect(url_for('sales_blueprint.orders_view'))
 
-        if sale['order_status'].lower() != 'processing':
+        if sale['order_status'].lower() not in ('processing', 'edited','received_on_credit'):
             flash('Only processing orders can be marked as complete.', 'warning')
             return redirect(url_for('sales_blueprint.orders_view'))
 
@@ -415,7 +503,7 @@ def mark_order_credit():
 
         # Step 2: Update order status to 'recieved_on_credit'
         cursor.execute("""
-            UPDATE sales SET order_status = 'recieved_on_credit'
+            UPDATE sales SET order_status = 'received_on_credit'
             WHERE salesID = %s
         """, (sales_id,))
 
@@ -471,7 +559,7 @@ def update_order_status():
     sales_id = request.form.get('salesID')
     new_status = request.form.get('order_status')
 
-    allowed_statuses = ['processing', 'canceled','credit_sale']
+    allowed_statuses = ['processing', 'canceled','credit_sale','completed']
     if new_status not in allowed_statuses:
         flash('Invalid status.', 'warning')
         return redirect(url_for('sales_blueprint.orders_view'))
@@ -617,7 +705,7 @@ def orders_view():
             JOIN product_list p ON s.ProductID = p.ProductID
             JOIN customer_list c ON s.customer_id = c.CustomerID
             WHERE s.type = 'sales'
-              AND s.order_status IN ('pending', 'processing','edited','credit_sale','recieved_on_credit')
+              AND s.order_status IN ('pending', 'processing','edited','credit_sale','received_on_credit')
               AND DATE(s.date_updated) BETWEEN %s AND %s
             ORDER BY s.date_updated DESC
         """, (start_date, end_date))
@@ -652,6 +740,90 @@ def orders_view():
         searched=searched,
         segment='orders_view'
     )
+
+
+
+
+
+
+
+
+@blueprint.route('/user_orders_view', methods=['GET', 'POST'])
+def user_orders_view():
+    if 'id' not in session:
+        flash('Login required to access this page.', 'error')
+        return redirect(url_for('authentication_blueprint.login'))
+
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+
+    try:
+        # Fetch user info
+        cursor.execute("SELECT * FROM users WHERE id = %s", (session['id'],))
+        user = cursor.fetchone()
+        if not user:
+            flash('User not found. Please log in again.', 'error')
+            return redirect(url_for('authentication_blueprint.login'))
+
+        today = datetime.today().strftime('%Y-%m-%d')
+        start_date = request.form.get('start_date', today)
+        end_date = request.form.get('end_date', today)
+        searched = request.method == 'POST'
+
+        # ---- Pending + Processing Sales Data (FOR LOGGED-IN USER ONLY) ----
+        cursor.execute("""
+            SELECT 
+                s.salesID,
+                p.name AS product_name,
+                c.name AS customer_name,
+                s.price,
+                s.discount,
+                s.discounted_price,
+                s.qty,
+                s.date_updated,
+                s.order_status
+            FROM sales s
+            JOIN product_list p ON s.ProductID = p.ProductID
+            JOIN customer_list c ON s.customer_id = c.CustomerID
+            WHERE s.type = 'sales'
+              AND s.user_id = %s
+              AND s.order_status IN ('pending', 'processing', 'edited', 'credit_sale', 'received_on_credit')
+              AND DATE(s.date_updated) BETWEEN %s AND %s
+            ORDER BY s.date_updated DESC
+        """, (session['id'], start_date, end_date))
+        sales = cursor.fetchall()
+
+        # ---- Totals (FOR LOGGED-IN USER ONLY) ----
+        cursor.execute("""
+            SELECT 
+                SUM(s.qty) AS total_quantity,
+                SUM(s.total_price) AS total_sales
+            FROM sales s
+            WHERE s.type = 'sales'
+              AND s.user_id = %s
+              AND s.order_status IN ('pending', 'processing', 'edited', 'credit_sale', 'received_on_credit')
+              AND DATE(s.date_updated) BETWEEN %s AND %s
+        """, (session['id'], start_date, end_date))
+        totals = cursor.fetchone()
+        total_sales = totals['total_sales'] or 0
+        total_quantity = totals['total_quantity'] or 0
+
+    finally:
+        cursor.close()
+        connection.close()
+
+    return render_template(
+        'sales/user_orders_view.html',
+        user=user,
+        sales=sales,
+        total_sales=f"{total_sales:,.2f}",
+        total_quantity=f"{total_quantity:,}",
+        start_date=start_date,
+        end_date=end_date,
+        searched=searched,
+        segment='user_orders_view'
+    )
+
 
 
 

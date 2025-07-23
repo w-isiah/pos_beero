@@ -18,7 +18,9 @@
   <section class="content-header">
     <div class="container-fluid">
       <div class="row mb-2">
-        <div class="col-sm-6"><h1>Sales Orders</h1></div>
+        <div class="col-sm-6">
+          <h1>Sales Orders</h1>
+        </div>
         <div class="col-sm-6">
           <ol class="breadcrumb float-sm-right">
             <li class="breadcrumb-item"><a href="/index">Home</a></li>
@@ -33,19 +35,21 @@
   <section class="content">
     <div class="container-fluid">
       {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-              {{ message }}
-              <button type="button" class="close" data-dismiss="alert">&times;</button>
-            </div>
-          {% endfor %}
-        {% endif %}
+      {% if messages %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+      </div>
+      {% endfor %}
+      {% endif %}
       {% endwith %}
 
       <!-- Filter Form -->
       <div class="card card-default">
-        <div class="card-header"><h3 class="card-title">Filter Sales by Date</h3></div>
+        <div class="card-header">
+          <h3 class="card-title">Filter Sales by Date</h3>
+        </div>
         <form method="POST" action="{{ url_for('sales_blueprint.orders_view') }}">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
           <div class="card-body">
@@ -86,81 +90,114 @@
                 <th>Date</th>
                 <th>Status</th>
                 <th>Action</th>
+                 
               </tr>
             </thead>
             <tbody>
               {% if sales %}
-                {% for sale in sales %}
-                  <tr>
-                    <td>{{ sale.salesID }}</td>
-                    <td>{{ sale.product_name }}</td>
-                    <td>{{ sale.customer_name }}</td>
-                    <td>{{ "%.2f"|format(sale.price) }}</td>
-                    <td>{{ "%.2f"|format(sale.discount) }}</td>
-                    <td>{{ "%.2f"|format(sale.discounted_price) }}</td>
-                    <td>{{ sale.qty }}</td>
-                    <td>{{ sale.date_updated.strftime('%Y-%m-%d') if sale.date_updated else '' }}</td>
-                    <td>
-                      {% if sale.order_status == 'pending' %}
-                        <span class="badge badge-warning">Pending</span>
-                      {% elif sale.order_status == 'processing' %}
-                        <span class="badge badge-info">Processing</span>
-                      {% elif sale.order_status == 'complete' %}
-                        <span class="badge badge-success">Complete</span>
-                      {% elif sale.order_status == 'canceled' %}
-                        <span class="badge badge-danger">Canceled</span>
-                      {% elif sale.order_status == 'credit_sale' %}
-                        <span class="badge badge-secondary">Credit Sale</span>
-                      {% else %}
-                        <span class="badge badge-dark">{{ sale.order_status }}</span>
-                      {% endif %}
-                    </td>
+              {% for sale in sales %}
+              <tr>
+                <td>{{ sale.salesID }}</td>
+                <td>{{ sale.product_name }}</td>
+                <td>{{ sale.customer_name }}</td>
+                <td>{{ "%.2f"|format(sale.price) }}</td>
+                <td>{{ "%.2f"|format(sale.discount) }}</td>
+                <td>{{ "%.2f"|format(sale.discounted_price) }}</td>
+                <td>{{ sale.qty }}</td>
+                <td>{{ sale.date_updated.strftime('%Y-%m-%d') if sale.date_updated else '' }}</td>
+                <td>
+                  {% if sale.order_status == 'pending' %}
+                  <span class="badge badge-warning">Pending</span>
+                  {% elif sale.order_status == 'processing' %}
+                  <span class="badge badge-info">Processing</span>
+                  {% elif sale.order_status == 'complete' %}
+                  <span class="badge badge-success">Complete</span>
+                  {% elif sale.order_status == 'canceled' %}
+                  <span class="badge badge-danger">Canceled</span>
+                  {% elif sale.order_status == 'credit_sale' %}
+                  <span class="badge badge-secondary">Credit Sale</span>
+                  {% else %}
+                  <span class="badge badge-dark">{{ sale.order_status }}</span>
+                  {% endif %}
+                </td>
 
-                    <!-- Actions -->
-                    <td>
-                      {% if session['role'] == 'user' %}
-                        {% if sale.order_status in ['processing', 'edited'] %}
-                          <!-- Mark as Complete -->
-                          <form method="POST" action="{{ url_for('sales_blueprint.mark_order_complete') }}">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="salesID" value="{{ sale.salesID }}">
-                            <button type="submit" class="btn btn-success btn-sm">Mark as Complete</button>
-                          </form>
-                        {% elif sale.order_status == 'credit_sale' %}
-                          <!-- Mark as Received on Credit -->
-                          <form method="POST" action="{{ url_for('sales_blueprint.mark_order_credit') }}">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="salesID" value="{{ sale.salesID }}">
-                            <button type="submit" class="btn btn-warning btn-sm">Mark as Received (Credit)</button>
-                          </form>
-                        {% endif %}
-                      {% elif session['role'] == 'admin' %}
-                        <!-- Admin Order Status Update -->
-                        <form method="POST" action="{{ url_for('sales_blueprint.update_order_status') }}" class="d-flex">
-                          <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                          <input type="hidden" name="salesID" value="{{ sale.salesID }}">
-                          <select name="order_status" class="form-control form-control-sm mr-1">
-                            <option value="">--Update--</option>
-                            <option value="processing" {% if sale.order_status == 'processing' %}selected{% endif %}>Processing</option>
-                            <option value="canceled" {% if sale.order_status == 'canceled' %}selected{% endif %}>Canceled</option>
-                            <option value="credit_sale" {% if sale.order_status == 'credit_sale' %}selected{% endif %}>Credit Sale</option>
-                          </select>
-                          <button type="submit" class="btn btn-info btn-sm">Update</button>
-                        </form>
+                <!-- Action Column -->
+                <td>
+                  {% if session['role'] == 'user' %}
+                  {% if sale.order_status in ['processing', 'edited'] %}
+                  <form method="POST" action="{{ url_for('sales_blueprint.mark_order_complete') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="salesID" value="{{ sale.salesID }}">
+                    <button type="submit" class="btn btn-success btn-sm">Clear Order</button>
+                  </form>
+                  {% elif sale.order_status == 'credit_sale' %}
+                  <form method="POST" action="{{ url_for('sales_blueprint.mark_order_credit') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="salesID" value="{{ sale.salesID }}">
+                    <button type="submit" class="btn btn-warning btn-sm">Mark as Received (Credit)</button>
+                  </form>
+                  {% endif %}
+
+
+
+                  {% elif session['role'] == 'admin' %}
+                  {% if sale.order_status in ['credit_sale', 'edited', 'processing','pending','received_on_credit'] %}
+                  <form method="POST" action="{{ url_for('sales_blueprint.update_order_status') }}" class="d-flex">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="salesID" value="{{ sale.salesID }}">
+
+
+                    <select name="order_status" class="form-control form-control-sm mr-1">
+                      <option value="">--Update--</option>
+
+                      {% if sale.order_status == 'pending' %}
+                      <option value="processing">Processing</option>
+                      <option value="credit_sale">Credit Sale</option>
+
+                      {% elif sale.order_status == 'credit_sale' %}
+                    
+
+                      {% elif sale.order_status == 'received_on_credit' %}
+                      <option value="completed">Clear Order</option>
+
+
+                      
+                      
+
+                      {% elif sale.order_status == 'completed' %}
+                      <!-- no extra options except canceled -->
+
+                      {% else %}
+                      <!-- fallback options can go here -->
                       {% endif %}
-                    </td>
-                  </tr>
-                {% endfor %}
+
+                      <option value="canceled" {% if sale.order_status == 'canceled' %}selected{% endif %}>Canceled</option>
+                    </select>
+
+
+
+
+                    <button type="submit" class="btn btn-info btn-sm">Update</button>
+                  </form>
+                  {% endif %}
+                  {% endif %}
+                </td>
+
+               
+
+
+              </tr>
+              {% endfor %}
               {% else %}
-                <tr>
-                  <td colspan="10" class="text-center text-muted">No sales found for selected dates.</td>
-                </tr>
+              <tr>
+                <td colspan="10" class="text-center text-muted">No sales found for selected dates.</td>
+              </tr>
               {% endif %}
             </tbody>
           </table>
         </div>
 
-        <!-- Footer Totals -->
+        <!-- Totals -->
         <div class="card-footer">
           <div class="row">
             <div class="col-md-6"><strong>Total Quantity:</strong> {{ total_quantity }}</div>
